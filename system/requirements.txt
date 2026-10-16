@@ -1,0 +1,5 @@
+# Deliberately short. The parser scores itself with keyword matching rather
+# than a language model so the demo runs offline, and the only hard dependency
+# is the spreadsheet writer for the bank files.
+openpyxl==3.1.5
+pytest==8.3.4
