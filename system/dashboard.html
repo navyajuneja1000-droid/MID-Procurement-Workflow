@@ -1,0 +1,1092 @@
+<title>MID Procurement Control</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+
+<style>
+/* Layout: a control surface. Filter rail on top, headline strip, then the
+   acquirer scorecard as the centrepiece, supporting breakdowns beneath it,
+   and the exception queue last. Drill-down opens over the page. */
+:root {
+  --bg: #f4f5f7;
+  --surface: #fdfdfd;
+  --surface-2: #eceef1;
+  --line: #d9dce1;
+  --line-soft: #e6e8ec;
+  --ink: #16181d;
+  --ink-2: #51565f;
+  --ink-3: #7d838d;
+  --accent: #2f3d8f;
+  --ops: #2a78d6;
+  --bank: #eb6834;
+  --good: #1f7a4d;
+  --warn: #9a6400;
+  --crit: #b2322f;
+  --good-bg: #e3f2e9;
+  --warn-bg: #fbf0d9;
+  --crit-bg: #fbe5e4;
+  --font-ui: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-data: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15171b;
+    --surface: #1d2025;
+    --surface-2: #262a31;
+    --line: #363b44;
+    --line-soft: #2b3038;
+    --ink: #f2f3f5;
+    --ink-2: #b2b8c2;
+    --ink-3: #868d98;
+    --accent: #93a0ea;
+    --ops: #3987e5;
+    --bank: #d95926;
+    --good: #5bc48c;
+    --warn: #e0ad47;
+    --crit: #ef7d7a;
+    --good-bg: #1b3328;
+    --warn-bg: #352b16;
+    --crit-bg: #3a1f1f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15171b;
+  --surface: #1d2025;
+  --surface-2: #262a31;
+  --line: #363b44;
+  --line-soft: #2b3038;
+  --ink: #f2f3f5;
+  --ink-2: #b2b8c2;
+  --ink-3: #868d98;
+  --accent: #93a0ea;
+  --ops: #3987e5;
+  --bank: #d95926;
+  --good: #5bc48c;
+  --warn: #e0ad47;
+  --crit: #ef7d7a;
+  --good-bg: #1b3328;
+  --warn-bg: #352b16;
+  --crit-bg: #3a1f1f;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+  padding-inline: 16px;
+  padding-block: 0 48px;
+}
+.wrap { max-width: 1180px; margin: 0 auto; }
+
+/* ---- header ---- */
+header { padding-block: 28px 18px; border-bottom: 1px solid var(--line); }
+h1 {
+  font-size: clamp(20px, 3.2vw, 27px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0;
+  text-wrap: balance;
+}
+.sub { color: var(--ink-2); margin: 6px 0 0; max-width: 62ch; }
+.asof {
+  font-family: var(--font-data);
+  font-size: 11px;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-top: 10px;
+}
+
+/* ---- filters ---- */
+.filters {
+  display: flex; flex-wrap: wrap; gap: 18px;
+  padding-block: 16px; border-bottom: 1px solid var(--line-soft);
+  position: sticky; top: env(safe-area-inset-top, 0px);
+  background: var(--bg); z-index: 20;
+}
+.fgroup { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.flabel {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.seg button {
+  font: inherit; font-size: 12.5px;
+  padding: 5px 11px; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink-2);
+  border-radius: var(--r); cursor: pointer;
+}
+.seg button:hover { border-color: var(--ink-3); color: var(--ink); }
+.seg button[aria-pressed="true"] {
+  background: var(--accent); border-color: var(--accent);
+  color: #fff; font-weight: 500;
+}
+:root[data-theme="dark"] .seg button[aria-pressed="true"],
+:root:not([data-theme="light"]) .seg button[aria-pressed="true"] { color: #15171b; }
+button:focus-visible, tr:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- sections ---- */
+section { padding-block: 30px 0; }
+h2 {
+  font-size: 15px; font-weight: 600; margin: 0 0 4px;
+  letter-spacing: -0.01em;
+}
+.note { color: var(--ink-2); margin: 0 0 16px; max-width: 70ch; font-size: 13px; }
+
+/* ---- headline strip ---- */
+.headline {
+  display: grid; gap: 1px; background: var(--line-soft);
+  border: 1px solid var(--line); border-radius: var(--r);
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  overflow: hidden; margin-top: 18px;
+}
+.stat { background: var(--surface); padding: 16px 18px; min-width: 0; }
+.stat.lead { grid-column: span 2; }
+@media (max-width: 560px) { .stat.lead { grid-column: span 1; } }
+.stat .k {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-3);
+}
+.stat .v {
+  font-family: var(--font-data); font-variant-numeric: tabular-nums;
+  font-weight: 500; letter-spacing: -0.02em; margin-top: 7px;
+  font-size: 27px; line-height: 1.05;
+}
+.stat.lead .v { font-size: 42px; color: var(--accent); }
+.stat .u { font-size: 13px; color: var(--ink-3); font-weight: 400; margin-left: 4px; }
+.stat .d { font-size: 12px; color: var(--ink-2); margin-top: 7px; }
+
+/* ---- callout ---- */
+.callout {
+  margin-top: 16px; padding: 14px 16px;
+  border: 1px solid var(--line); border-left: 3px solid var(--warn);
+  background: var(--surface); border-radius: var(--r);
+  display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: baseline;
+}
+.callout b { font-weight: 600; }
+.callout .t { font-size: 13px; color: var(--ink-2); flex: 1 1 320px; min-width: 0; }
+.callout .n {
+  font-family: var(--font-data); font-variant-numeric: tabular-nums;
+  font-size: 20px; font-weight: 500;
+}
+
+/* ---- tables ---- */
+.tscroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line-soft); }
+th {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--ink-3);
+  background: var(--surface-2); white-space: nowrap;
+  position: sticky; top: 0;
+}
+tbody tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-family: var(--font-data); font-variant-numeric: tabular-nums; white-space: nowrap; }
+th.num { text-align: right; }
+.nm { font-weight: 500; }
+.code { font-family: var(--font-data); font-size: 12px; color: var(--ink-2); }
+
+/* inline bar inside a cell */
+.cellbar { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
+.cellbar .track { width: 58px; height: 7px; border-radius: 4px; background: var(--surface-2); overflow: hidden; flex: none; }
+/* display:block matters. These fills are spans inside a non-flex parent, so
+   without it they stay inline, ignore width and height, and render at 0x0
+   while still carrying a correct-looking width percentage in the markup. */
+.cellbar .fill { display: block; height: 100%; border-radius: 4px; }
+
+.pill {
+  display: inline-block; padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 500; white-space: nowrap;
+  font-family: var(--font-ui);
+}
+.pill.good { background: var(--good-bg); color: var(--good); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+.pill.crit { background: var(--crit-bg); color: var(--crit); }
+.pill.flat { background: var(--surface-2); color: var(--ink-2); }
+
+tbody tr.click { cursor: pointer; }
+tbody tr.click:hover { background: var(--surface-2); }
+
+/* ---- grouped bar chart ---- */
+.legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; font-size: 12.5px; color: var(--ink-2); }
+.legend span { display: flex; align-items: center; gap: 6px; }
+.swatch { width: 11px; height: 11px; border-radius: 2px; flex: none; }
+
+.chart { display: flex; flex-direction: column; gap: 14px; }
+.crow { display: grid; grid-template-columns: 112px 1fr; gap: 12px; align-items: center; }
+@media (max-width: 520px) { .crow { grid-template-columns: 1fr; gap: 4px; } }
+.crow .lab { font-size: 12.5px; color: var(--ink-2); min-width: 0; overflow-wrap: break-word; }
+.bars { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.bar { display: flex; align-items: center; gap: 8px; }
+.bar .b { height: 13px; border-radius: 0 4px 4px 0; min-width: 2px; }
+.bar .n {
+  font-family: var(--font-data); font-variant-numeric: tabular-nums;
+  font-size: 11.5px; color: var(--ink-2); white-space: nowrap;
+}
+
+/* ---- two-column grid ---- */
+.cols { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); }
+.panel { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); padding: 16px 18px; min-width: 0; }
+.panel h3 { font-size: 13px; font-weight: 600; margin: 0 0 3px; }
+.panel .pn { font-size: 12px; color: var(--ink-3); margin: 0 0 14px; }
+
+.rank { display: flex; flex-direction: column; gap: 9px; }
+.rk { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: baseline; }
+.rk .t { font-size: 12.5px; min-width: 0; overflow-wrap: break-word; }
+.rk .c { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--ink-2); }
+.rk .tr { grid-column: 1 / -1; height: 5px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.rk .fl { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+
+/* ---- merchant search ---- */
+.search { display: flex; flex-direction: column; gap: 6px; max-width: 420px; margin-bottom: 18px; }
+.search input {
+  font: inherit; font-size: 14px; padding: 9px 12px;
+  border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--surface); color: var(--ink); width: 100%;
+}
+.search input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.mcard { border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); margin-bottom: 14px; overflow: hidden; }
+.mcard > header {
+  padding: 13px 16px; border-bottom: 1px solid var(--line-soft);
+  display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline;
+}
+.mcard h3 { font-size: 14px; font-weight: 600; margin: 0; min-width: 0; overflow-wrap: break-word; }
+.mcard .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.usecase {
+  padding: 9px 16px 4px; font-size: 11px; font-weight: 600;
+  letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-3);
+}
+.hint { color: var(--ink-3); font-size: 13px; }
+
+/* ---- drill-down ---- */
+.scrim {
+  position: fixed; inset: 0; background: rgba(10,12,16,.55);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 24px 16px; overflow-y: auto; z-index: 60;
+}
+.modal {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 8px; width: 100%; max-width: 760px;
+  padding: 20px 22px 24px; margin-block: auto;
+}
+.mhead { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; }
+.mhead h3 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.mhead .meta { font-family: var(--font-data); font-size: 12px; color: var(--ink-2); margin-top: 5px; }
+.x {
+  font: inherit; font-size: 20px; line-height: 1; background: none;
+  border: 0; color: var(--ink-3); cursor: pointer; padding: 2px 6px; flex: none;
+}
+.x:hover { color: var(--ink); }
+
+.gantt { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
+.grow { display: grid; grid-template-columns: 96px 1fr 52px; gap: 10px; align-items: center; }
+@media (max-width: 520px) { .grow { grid-template-columns: 78px 1fr 44px; gap: 7px; } }
+.grow .who { font-size: 12px; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grow .lane { position: relative; height: 15px; background: var(--surface-2); border-radius: 3px; min-width: 0; }
+.grow .seg2 { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+.grow .dys { font-family: var(--font-data); font-variant-numeric: tabular-nums; font-size: 11.5px; color: var(--ink-2); text-align: right; }
+.axis { display: flex; justify-content: space-between; font-family: var(--font-data); font-size: 10.5px; color: var(--ink-3); margin-top: 7px; padding-left: 106px; }
+@media (max-width: 520px) { .axis { padding-left: 85px; } }
+
+.evlist { margin-top: 20px; border-top: 1px solid var(--line-soft); padding-top: 14px; }
+.ev { display: grid; grid-template-columns: 112px 1fr; gap: 10px; padding: 5px 0; font-size: 12.5px; }
+@media (max-width: 520px) { .ev { grid-template-columns: 1fr; gap: 1px; } }
+.ev .when { font-family: var(--font-data); font-size: 11.5px; color: var(--ink-3); white-space: nowrap; }
+.ev .what { min-width: 0; overflow-wrap: break-word; }
+.ev .why { color: var(--ink-3); }
+
+.sumline {
+  margin-top: 16px; padding: 11px 13px; background: var(--surface-2);
+  border-radius: var(--r); font-size: 12.5px; color: var(--ink-2);
+}
+.sumline b { color: var(--ink); font-family: var(--font-data); font-weight: 500; }
+
+footer {
+  margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line);
+  font-size: 12px; color: var(--ink-3); max-width: 76ch;
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>MID Procurement Control</h1>
+    <p class="sub">Cards MID procurement across six acquiring rails. Every figure is derived from the event log, not entered by hand.</p>
+    <p class="asof" id="asof"></p>
+  </header>
+
+  <div class="filters">
+    <div class="fgroup">
+      <span class="flabel" id="l-stream">Stream</span>
+      <div class="seg" id="f-stream" role="group" aria-labelledby="l-stream"></div>
+    </div>
+    <div class="fgroup">
+      <span class="flabel" id="l-seg">Segment</span>
+      <div class="seg" id="f-seg" role="group" aria-labelledby="l-seg"></div>
+    </div>
+    <div class="fgroup">
+      <span class="flabel" id="l-acq">Acquirer</span>
+      <div class="seg" id="f-acq" role="group" aria-labelledby="l-acq"></div>
+    </div>
+  </div>
+
+  <section>
+    <div class="headline" id="headline"></div>
+    <div class="callout" id="callout"></div>
+  </section>
+
+  <section>
+    <h2>Acquirer scorecard</h2>
+    <p class="note">What each rail actually delivers. SLA is judged on the slowest single response round, not the total held time, so our own turnaround between a bank's rounds is not charged to the bank.</p>
+    <div class="tscroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Acquirer</th>
+            <th class="num">Requests</th>
+            <th class="num">Ops days</th>
+            <th class="num">Bank days</th>
+            <th class="num">Worst round</th>
+            <th class="num">SLA</th>
+            <th class="num">Breach</th>
+            <th class="num">Rounds</th>
+            <th class="num">Rejected</th>
+          </tr>
+        </thead>
+        <tbody id="scorecard"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>Where the days go</h2>
+    <p class="note">Ops time and bank time run at the same moment, so these are two separate figures and never slices of one whole. Ops days here exclude requests still waiting to be raised.</p>
+    <div class="legend">
+      <span><i class="swatch" style="background:var(--ops)"></i>Ops, hands on</span>
+      <span><i class="swatch" style="background:var(--bank)"></i>Acquirer</span>
+    </div>
+    <div class="chart" id="chart"></div>
+  </section>
+
+  <section>
+    <div class="cols">
+      <div class="panel">
+        <h3>Why requests come back</h3>
+        <p class="pn">Bounce reasons, by reason code</p>
+        <div class="rank" id="bounces"></div>
+      </div>
+      <div class="panel">
+        <h3>Why acquirers decline</h3>
+        <p class="pn">Rejection reasons, classified from free text</p>
+        <div class="rank" id="rejects"></div>
+      </div>
+      <div class="panel">
+        <h3>Current status</h3>
+        <p class="pn">Every open and closed request</p>
+        <div class="rank" id="statuses"></div>
+      </div>
+      <div class="panel">
+        <h3>By priority tier</h3>
+        <p class="pn">P0 is 1 Cr and above, P4 under 5L</p>
+        <div class="rank" id="tiers"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Find a merchant</h2>
+    <p class="note">Every acquirer and use case for one merchant, side by side. This is the view the old tracker gave by putting one merchant on one row, and the view a request-level list loses.</p>
+    <div class="search">
+      <label class="flabel" for="q">Merchant legal name</label>
+      <input id="q" type="search" autocomplete="off" spellcheck="false"
+             placeholder="Start typing a name, for example Harrowgate">
+    </div>
+    <div id="results"></div>
+  </section>
+
+  <section id="inbox-section" hidden>
+    <h2>Inbox</h2>
+    <p class="note">Bank replies arrive as tables in the email body, numbered lists, or attached sheets, with each acquirer using its own column names and wording. Rows the parser is sure of are applied the moment they are read, so those clocks stop. The rest wait for a person, because a wrongly applied row writes a wrong event into the clock and every figure above inherits it.</p>
+    <div class="headline" id="inbox-stats"></div>
+    <div id="review-wrap" style="margin-top:18px">
+      <div class="tscroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Name as the bank wrote it</th>
+              <th class="num">MCC</th>
+              <th>Acquirer</th>
+              <th class="num">Confidence</th>
+              <th>Why it is here</th>
+            </tr>
+          </thead>
+          <tbody id="review"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Needs attention</h2>
+    <p class="note">Requests past their acquirer's SLA, bounced more than once, or waiting longest to be raised. Select any row for its full timeline.</p>
+    <div class="tscroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Merchant</th>
+            <th class="num">MCC</th>
+            <th>Acquirer</th>
+            <th>Status</th>
+            <th class="num">Days open</th>
+            <th>Flag</th>
+          </tr>
+        </thead>
+        <tbody id="exceptions"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    Demonstration build. Acquirers, merchants and figures are invented and no real
+    institution appears here. Procurement scope ends at MID received; configuration
+    and go-live are out of scope.
+  </footer>
+</div>
+
+<div class="scrim" id="scrim" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+    <div class="mhead">
+      <div style="min-width:0">
+        <h3 id="m-title"></h3>
+        <div class="meta" id="m-meta"></div>
+      </div>
+      <button class="x" id="m-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="sumline" id="m-sum"></div>
+    <div class="gantt" id="m-gantt"></div>
+    <div class="axis" id="m-axis"></div>
+    <div class="evlist" id="m-ev"></div>
+  </div>
+</div>
+
+<script type="application/json" id="payload">__DATA__</script>
+
+<script>
+(function () {
+  "use strict";
+
+  const DATA = JSON.parse(document.getElementById("payload").textContent);
+  const ACQ = DATA.acquirers;
+  const ALL = DATA.requests;
+
+  document.getElementById("asof").textContent = "As of " + DATA.asOf;
+
+  const STATUS_LABEL = {
+    procured: "MID procured",
+    to_be_raised: "To be raised",
+    raised: "With acquirer",
+    rejected_by_bank: "Rejected by bank",
+    approved: "Approved, MID awaited",
+    additional_docs_pending_bd: "Docs pending with BD",
+    additional_docs_pending_onboarding: "Pending with onboarding",
+    clarification_required: "Clarification required",
+    deprioritised: "Deprioritised"
+  };
+
+  const EVENT_LABEL = {
+    assigned_to_ops: "Assigned to ops",
+    bounced_to_bd: "Bounced to BD",
+    bounced_to_onboarding: "Bounced to onboarding",
+    returned_to_ops: "Returned to ops",
+    raised_to_acquirer: "Raised to acquirer",
+    acquirer_requested_docs: "Acquirer requested documents",
+    acquirer_requested_clarification: "Acquirer requested clarification",
+    responded_to_acquirer: "Responded to acquirer",
+    acquirer_approved: "Approved",
+    acquirer_rejected: "Rejected",
+    mid_received: "MID received",
+    deprioritised: "Deprioritised"
+  };
+
+  const PARTY_LABEL = { ops: "Ops", bd: "BD", onb: "Onboarding", acq: "Acquirer" };
+  const PHASE_LABEL = { solo: "hands on", overlap: "awaiting bank", status: "status", mid: "MID delivery" };
+
+  const titleCase = (s) =>
+    s.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+
+  const fmt1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
+
+  // ---- filter state ----
+  const state = { stream: "all", seg: "all", acq: "all" };
+
+  function buildSeg(id, key, options) {
+    const host = document.getElementById(id);
+    host.innerHTML = "";
+    options.forEach(([value, label]) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = label;
+      b.setAttribute("aria-pressed", String(state[key] === value));
+      b.addEventListener("click", () => {
+        state[key] = value;
+        host.querySelectorAll("button").forEach((o) =>
+          o.setAttribute("aria-pressed", String(o === b))
+        );
+        render();
+      });
+      host.appendChild(b);
+    });
+  }
+
+  function filtered() {
+    return ALL.filter(
+      (r) =>
+        (state.stream === "all" || r.stream === state.stream) &&
+        (state.seg === "all" || r.seg === state.seg) &&
+        (state.acq === "all" || r.acq === state.acq)
+    );
+  }
+
+  // A request still sitting in the ops queue has an open clock, so its ops
+  // days keep climbing. Blending those into the average would make the
+  // headline move with backlog size rather than with how ops is performing.
+  const isQueued = (r) => r.status === "to_be_raised";
+  const isLive = (r) => !r.depr;
+
+  const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+
+  // ---- headline ----
+  function renderHeadline(rows) {
+    const live = rows.filter(isLive);
+    const worked = live.filter((r) => !isQueued(r));
+    const answered = live.filter((r) => r.acqStatus > 0);
+
+    const opsSolo = mean(worked.map((r) => r.opsSolo));
+    const bankDays = mean(answered.map((r) => r.acqStatus));
+    const breach = answered.length
+      ? answered.filter((r) => r.breach).length / answered.length
+      : 0;
+    const bounced = live.filter((r) => r.opsEp > 1).length;
+    const bounceRate = live.length ? bounced / live.length : 0;
+    const procured = rows.filter((r) => r.status === "procured").length;
+
+    const cards = [
+      {
+        lead: true,
+        k: "Blended ops TAT",
+        v: fmt1(opsSolo),
+        u: "working days",
+        d: "Hands-on time only, averaged across every acquirer. Excludes time waiting on a bank or on BD."
+      },
+      { k: "Acquirer time", v: fmt1(bankDays), u: "days", d: "Average held by the bank, all rounds" },
+      {
+        k: "SLA breaches",
+        v: Math.round(breach * 100) + "%",
+        d: answered.filter((r) => r.breach).length + " of " + answered.length + " answered"
+      },
+      {
+        k: "Bounce rate",
+        v: Math.round(bounceRate * 100) + "%",
+        d: bounced + " requests returned to ops at least once"
+      },
+      { k: "MIDs procured", v: String(procured), d: "Of " + rows.length + " requests in view" }
+    ];
+
+    document.getElementById("headline").innerHTML = cards
+      .map(
+        (c) => `<div class="stat${c.lead ? " lead" : ""}">
+          <div class="k">${c.k}</div>
+          <div class="v">${c.v}${c.u ? `<span class="u">${c.u}</span>` : ""}</div>
+          <div class="d">${c.d}</div>
+        </div>`
+      )
+      .join("");
+
+    // The queue is reported on its own, never folded into the average above.
+    const queued = live.filter(isQueued);
+    const ages = queued.map((r) => r.opsSolo).sort((a, b) => a - b);
+    const median = ages.length ? ages[Math.floor(ages.length / 2)] : 0;
+    const over5 = ages.filter((d) => d > 5).length;
+
+    document.getElementById("callout").innerHTML = queued.length
+      ? `<div class="n">${queued.length}</div>
+         <div class="t"><b>requests assigned to ops but never raised.</b>
+         Median wait ${median} working days, ${over5} of them past five days.
+         This queue counts against ops but is invisible in any report that starts
+         counting only once a request reaches a bank.</div>`
+      : `<div class="t">No requests are waiting to be raised in this view.</div>`;
+  }
+
+  // ---- acquirer scorecard ----
+  function acquirerStats(rows) {
+    const out = [];
+    Object.keys(ACQ).forEach((code) => {
+      const mine = rows.filter((r) => r.acq === code && isLive(r));
+      if (!mine.length) return;
+      const worked = mine.filter((r) => !isQueued(r));
+      const answered = mine.filter((r) => r.acqStatus > 0);
+      const rejected = mine.filter((r) => r.status === "rejected_by_bank").length;
+      out.push({
+        code,
+        name: ACQ[code].name,
+        sla: ACQ[code].sla,
+        n: mine.length,
+        ops: mean(worked.map((r) => r.opsSolo)),
+        bank: mean(answered.map((r) => r.acqStatus)),
+        worst: mean(answered.map((r) => r.acqWorst)),
+        breach: answered.length ? answered.filter((r) => r.breach).length / answered.length : 0,
+        rounds: mean(answered.map((r) => r.acqRounds)),
+        rejRate: mine.length ? rejected / mine.length : 0,
+        answered: answered.length
+      });
+    });
+    return out.sort((a, b) => a.bank - b.bank);
+  }
+
+  function renderScorecard(stats) {
+    const maxBank = Math.max(...stats.map((s) => s.bank), 1);
+    document.getElementById("scorecard").innerHTML = stats
+      .map((s) => {
+        const cls = s.breach >= 0.3 ? "crit" : s.breach >= 0.2 ? "warn" : "good";
+        const over = s.worst > s.sla;
+        return `<tr>
+          <td class="nm">${s.name}</td>
+          <td class="num">${s.n}</td>
+          <td class="num">${fmt1(s.ops)}</td>
+          <td class="num">
+            <span class="cellbar">
+              <span class="track"><span class="fill" style="width:${(s.bank / maxBank) * 100}%;background:var(--bank)"></span></span>
+              ${fmt1(s.bank)}
+            </span>
+          </td>
+          <td class="num" style="${over ? "color:var(--crit)" : ""}">${fmt1(s.worst)}</td>
+          <td class="num" style="color:var(--ink-3)">${s.sla}</td>
+          <td class="num"><span class="pill ${cls}">${Math.round(s.breach * 100)}%</span></td>
+          <td class="num">${(Math.round(s.rounds * 100) / 100).toFixed(2)}</td>
+          <td class="num">${Math.round(s.rejRate * 100)}%</td>
+        </tr>`;
+      })
+      .join("");
+  }
+
+  // ---- grouped bars ----
+  function renderChart(stats) {
+    const max = Math.max(...stats.flatMap((s) => [s.ops, s.bank]), 1);
+    document.getElementById("chart").innerHTML = stats
+      .map(
+        (s) => `<div class="crow">
+          <div class="lab">${s.name}</div>
+          <div class="bars">
+            <div class="bar">
+              <span class="b" style="width:${(s.ops / max) * 100}%;background:var(--ops)"></span>
+              <span class="n">${fmt1(s.ops)} ops</span>
+            </div>
+            <div class="bar">
+              <span class="b" style="width:${(s.bank / max) * 100}%;background:var(--bank)"></span>
+              <span class="n">${fmt1(s.bank)} bank</span>
+            </div>
+          </div>
+        </div>`
+      )
+      .join("");
+  }
+
+  // ---- ranked lists ----
+  function renderRank(id, pairs, total) {
+    const max = Math.max(...pairs.map((p) => p[1]), 1);
+    document.getElementById(id).innerHTML = pairs.length
+      ? pairs
+          .map(
+            ([label, n]) => `<div class="rk">
+              <div class="t">${label}</div>
+              <div class="c">${n}${total ? ` <span style="color:var(--ink-3)">${Math.round((n / total) * 100)}%</span>` : ""}</div>
+              <div class="tr"><span class="fl" style="width:${(n / max) * 100}%"></span></div>
+            </div>`
+          )
+          .join("")
+      : `<div class="pn">Nothing in this view.</div>`;
+  }
+
+  function countBy(rows, fn) {
+    const m = new Map();
+    rows.forEach((r) => {
+      const k = fn(r);
+      if (k === null || k === undefined) return;
+      (Array.isArray(k) ? k : [k]).forEach((v) => m.set(v, (m.get(v) || 0) + 1));
+    });
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  }
+
+  // ---- exceptions ----
+  // A request that is already procured, rejected or deprioritised needs no
+  // action, however badly its acquirer missed SLA on the way. A work queue
+  // full of finished work is a work queue nobody reads.
+  const NEEDS_NO_ACTION = new Set(["procured", "rejected_by_bank", "deprioritised"]);
+  const isOpen = (r) => !NEEDS_NO_ACTION.has(r.status);
+
+  function renderExceptions(rows) {
+    const flagged = rows
+      .filter((r) => isLive(r) && isOpen(r))
+      .map((r) => {
+        let flag = null, rank = 0;
+        if (r.breach) { flag = ["Past acquirer SLA", "crit"]; rank = 3; }
+        else if (r.opsEp > 2) { flag = ["Bounced " + (r.opsEp - 1) + " times", "warn"]; rank = 2; }
+        else if (isQueued(r) && r.opsSolo > 15) { flag = ["Waiting to be raised", "warn"]; rank = 1; }
+        return flag ? { r, flag, rank } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.rank - a.rank || b.r.opsSolo - a.r.opsSolo)
+      .slice(0, 14);
+
+    const tbody = document.getElementById("exceptions");
+    tbody.innerHTML = flagged
+      .map(
+        ({ r, flag }) => `<tr class="click" tabindex="0" data-id="${r.id}">
+          <td class="nm">${r.name}</td>
+          <td class="num code">${r.mcc}</td>
+          <td>${ACQ[r.acq].name}</td>
+          <td><span class="pill flat">${STATUS_LABEL[r.status] || titleCase(r.status)}</span></td>
+          <td class="num">${r.elapsed || r.opsSolo}</td>
+          <td><span class="pill ${flag[1]}">${flag[0]}</span></td>
+        </tr>`
+      )
+      .join("");
+
+    tbody.querySelectorAll("tr.click").forEach((tr) => {
+      const open = () => openDrill(tr.dataset.id);
+      tr.addEventListener("click", open);
+      tr.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+      });
+    });
+  }
+
+  // ---- merchant search ----
+  // One merchant can hold several use cases, each with its own MCC, and each
+  // of those goes to several acquirers. So the answer to "where is this
+  // merchant" is a grid, never a single status, and grouping by MCC first is
+  // what keeps two use cases from being read as one.
+  function renderResults(query) {
+    const host = document.getElementById("results");
+    const q = query.trim().toLowerCase();
+
+    if (q.length < 2) {
+      host.innerHTML = `<p class="hint">Type at least two letters.</p>`;
+      return;
+    }
+
+    const hits = ALL.filter((r) => r.name.toLowerCase().includes(q));
+    if (!hits.length) {
+      host.innerHTML = `<p class="hint">No merchant matches &ldquo;${query}&rdquo;.</p>`;
+      return;
+    }
+
+    const byMerchant = new Map();
+    hits.forEach((r) => {
+      if (!byMerchant.has(r.name)) byMerchant.set(r.name, []);
+      byMerchant.get(r.name).push(r);
+    });
+
+    const names = [...byMerchant.keys()].sort().slice(0, 6);
+    const more = byMerchant.size - names.length;
+
+    host.innerHTML =
+      names
+        .map((name) => {
+          const reqs = byMerchant.get(name);
+          const first = reqs[0];
+          const byMcc = new Map();
+          reqs.forEach((r) => {
+            if (!byMcc.has(r.mcc)) byMcc.set(r.mcc, []);
+            byMcc.get(r.mcc).push(r);
+          });
+
+          const procured = reqs.filter((r) => r.status === "procured").length;
+          const roll =
+            procured === 0
+              ? ["Nothing procured yet", "crit"]
+              : procured === reqs.length
+              ? ["Procured everywhere", "good"]
+              : [`Partially procured, ${procured} of ${reqs.length}`, "warn"];
+
+          const sections = [...byMcc.entries()]
+            .sort()
+            .map(([mcc, rows]) => {
+              const head =
+                byMcc.size > 1 ? `<div class="usecase">Use case &middot; MCC ${mcc}</div>` : "";
+              const body = rows
+                .sort((a, b) => a.acq.localeCompare(b.acq))
+                .map(
+                  (r) => `<tr class="click" tabindex="0" data-id="${r.id}">
+                    <td class="nm">${ACQ[r.acq].name}</td>
+                    <td><span class="pill ${
+                      r.status === "procured" ? "good" :
+                      r.status === "rejected_by_bank" ? "crit" :
+                      r.status === "deprioritised" ? "flat" : "warn"
+                    }">${STATUS_LABEL[r.status] || titleCase(r.status)}</span></td>
+                    <td class="num">${r.opsSolo}</td>
+                    <td class="num">${r.acqStatus + r.acqMid}</td>
+                    <td class="num">${r.opsEp > 1 ? r.opsEp - 1 : "&mdash;"}</td>
+                    <td class="num">${r.breach ? `<span class="pill crit">Past SLA</span>` : "&mdash;"}</td>
+                  </tr>`
+                )
+                .join("");
+              return `${head}<div class="tscroll" style="border:0;border-radius:0">
+                <table>
+                  <thead><tr>
+                    <th>Acquirer</th><th>Status</th>
+                    <th class="num">Ops days</th><th class="num">Bank days</th>
+                    <th class="num">Bounces</th><th class="num">SLA</th>
+                  </tr></thead>
+                  <tbody>${body}</tbody>
+                </table></div>`;
+            })
+            .join("");
+
+          return `<div class="mcard">
+            <header>
+              <h3>${name}</h3>
+              <div class="tags">
+                <span class="pill ${roll[1]}">${roll[0]}</span>
+                <span class="pill flat">${titleCase(first.seg)}</span>
+                <span class="pill flat">${first.tier.toUpperCase()}</span>
+                <span class="pill flat">${first.stream === "bau" ? "BAU" : "Migration"}</span>
+              </div>
+            </header>
+            ${sections}
+          </div>`;
+        })
+        .join("") +
+      (more > 0 ? `<p class="hint">${more} more merchant${more === 1 ? "" : "s"} match. Keep typing to narrow it.</p>` : "");
+
+    host.querySelectorAll("tr.click").forEach((tr) => {
+      const open = () => openDrill(tr.dataset.id);
+      tr.addEventListener("click", open);
+      tr.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
+      });
+    });
+  }
+
+  // ---- drill-down timeline ----
+  const scrim = document.getElementById("scrim");
+  let lastFocus = null;
+
+  function openDrill(id) {
+    const r = ALL.find((x) => x.id === id);
+    if (!r) return;
+    lastFocus = document.activeElement;
+
+    document.getElementById("m-title").textContent = r.name;
+    document.getElementById("m-meta").textContent =
+      `MCC ${r.mcc}  ·  ${ACQ[r.acq].name}  ·  ${r.id}`;
+
+    const partyDays = r.opsSolo + r.opsOverlap + r.bd + r.onb + r.acqStatus + r.acqMid;
+    document.getElementById("m-sum").innerHTML =
+      `Ops <b>${r.opsSolo}</b> hands on and <b>${r.opsOverlap}</b> awaiting the bank, across
+       <b>${r.opsEp}</b> pickup${r.opsEp === 1 ? "" : "s"}.
+       BD <b>${r.bd}</b>, onboarding <b>${r.onb}</b>, acquirer <b>${r.acqStatus + r.acqMid}</b>.
+       Elapsed <b>${r.elapsed}</b> working days, against <b>${partyDays}</b> days summed across
+       parties: the difference is the overlap, which is why a share-of-delay split would mislead.`;
+
+    // Lay every episode on one shared date scale so overlaps are visible.
+    const toDay = (s) => Date.parse(s + "T00:00:00Z") / 86400000;
+    const starts = r.eps.map((e) => toDay(e.s));
+    const ends = r.eps.map((e) => toDay(e.e || e.s));
+    const lo = Math.min(...starts);
+    const hi = Math.max(...ends);
+    const span = Math.max(hi - lo, 1);
+
+    document.getElementById("m-gantt").innerHTML = r.eps
+      .map((e) => {
+        const a = ((toDay(e.s) - lo) / span) * 100;
+        const b = ((toDay(e.e || e.s) - lo) / span) * 100;
+        const w = Math.max(b - a, 1.2);
+        const colour =
+          e.p === "acq" ? "var(--bank)" : e.p === "ops" ? "var(--ops)" : "var(--ink-3)";
+        const faded = e.p === "ops" && e.ph === "overlap";
+        const phase = PHASE_LABEL[e.ph] ? ` <span style="color:var(--ink-3)">${PHASE_LABEL[e.ph]}</span>` : "";
+        return `<div class="grow">
+          <div class="who">${PARTY_LABEL[e.p]}${phase}</div>
+          <div class="lane">
+            <span class="seg2" style="left:${a}%;width:${w}%;background:${colour};${faded ? "opacity:.45" : ""}"></span>
+          </div>
+          <div class="dys">${e.d}d${e.o ? "+" : ""}</div>
+        </div>`;
+      })
+      .join("");
+
+    const dayLabel = (d) =>
+      new Date(d * 86400000).toLocaleDateString("en-GB", { day: "2-digit", month: "short" });
+    document.getElementById("m-axis").innerHTML =
+      `<span>${dayLabel(lo)}</span><span>${dayLabel(lo + span / 2)}</span><span>${dayLabel(hi)}</span>`;
+
+    document.getElementById("m-ev").innerHTML = r.ev
+      .map(
+        (e) => `<div class="ev">
+          <div class="when">${e.at}</div>
+          <div class="what">${EVENT_LABEL[e.t] || titleCase(e.t)}${
+            e.r ? ` <span class="why">&middot; ${titleCase(e.r)}</span>` : ""
+          }</div>
+        </div>`
+      )
+      .join("");
+
+    scrim.hidden = false;
+    document.getElementById("m-close").focus();
+  }
+
+  function closeDrill() {
+    scrim.hidden = true;
+    if (lastFocus) lastFocus.focus();
+  }
+
+  document.getElementById("m-close").addEventListener("click", closeDrill);
+  scrim.addEventListener("click", (e) => { if (e.target === scrim) closeDrill(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !scrim.hidden) closeDrill(); });
+
+  // ---- render ----
+  function render() {
+    const rows = filtered();
+    renderHeadline(rows);
+    const stats = acquirerStats(rows);
+    renderScorecard(stats);
+    renderChart(stats);
+
+    const live = rows.filter(isLive);
+    const bounceEvents = [];
+    live.forEach((r) =>
+      r.ev.forEach((e) => {
+        if (e.t === "bounced_to_bd" || e.t === "bounced_to_onboarding") bounceEvents.push(e.r);
+      })
+    );
+    const bMap = new Map();
+    bounceEvents.forEach((b) => b && bMap.set(b, (bMap.get(b) || 0) + 1));
+    renderRank(
+      "bounces",
+      [...bMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 7).map(([k, v]) => [titleCase(k), v]),
+      bounceEvents.length
+    );
+
+    const rejMap = new Map();
+    live.forEach((r) =>
+      r.ev.forEach((e) => {
+        if (e.t === "acquirer_rejected" && e.r) rejMap.set(e.r, (rejMap.get(e.r) || 0) + 1);
+      })
+    );
+    const rejTotal = [...rejMap.values()].reduce((a, b) => a + b, 0);
+    renderRank(
+      "rejects",
+      [...rejMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 7).map(([k, v]) => [titleCase(k), v]),
+      rejTotal
+    );
+
+    renderRank(
+      "statuses",
+      countBy(rows, (r) => STATUS_LABEL[r.status] || titleCase(r.status)),
+      rows.length
+    );
+
+    const tierOrder = ["p0", "p1", "p2", "p3", "p4"];
+    const tierLabel = { p0: "P0 · 1 Cr+", p1: "P1 · 25L+", p2: "P2 · 10L+", p3: "P3 · 5L+", p4: "P4 · under 5L" };
+    const tierCounts = countBy(rows, (r) => r.tier);
+    renderRank(
+      "tiers",
+      tierOrder
+        .map((t) => [tierLabel[t], (tierCounts.find((c) => c[0] === t) || [t, 0])[1]])
+        .filter((p) => p[1] > 0),
+      rows.length
+    );
+
+    renderExceptions(rows);
+  }
+
+  // The inbox is the whole mailbox and does not respond to the filters above,
+  // so it renders once.
+  function renderInbox() {
+    const ib = DATA.inbox;
+    if (!ib || !ib.rows) return;
+    document.getElementById("inbox-section").hidden = false;
+
+    const autoRate = ib.applied / ib.rows;
+    document.getElementById("inbox-stats").innerHTML = [
+      {
+        lead: true,
+        k: "Applied without a person",
+        v: (Math.round(autoRate * 1000) / 10).toFixed(1) + "%",
+        d: ib.applied + " of " + ib.rows + " rows, read from " + ib.emails + " emails"
+      },
+      { k: "Emails read", v: String(ib.emails), d: "Status replies and credential mails" },
+      { k: "Rows waiting", v: String(ib.rows - ib.applied), d: "Held for review rather than guessed" }
+    ]
+      .map(
+        (c) => `<div class="stat${c.lead ? " lead" : ""}">
+          <div class="k">${c.k}</div>
+          <div class="v">${c.v}</div>
+          <div class="d">${c.d}</div>
+        </div>`
+      )
+      .join("");
+
+    const rows = ib.review || [];
+    document.getElementById("review").innerHTML = rows.length
+      ? rows
+          .map(
+            (r) => `<tr>
+              <td class="nm">${r.name || "<span style='color:var(--ink-3)'>blank</span>"}</td>
+              <td class="num code">${r.mcc || "&mdash;"}</td>
+              <td>${(ACQ[r.acq] && ACQ[r.acq].name) || r.acq}</td>
+              <td class="num">${r.conf ? r.conf.toFixed(2) : "&mdash;"}</td>
+              <td style="color:var(--ink-2)">${r.why}</td>
+            </tr>`
+          )
+          .join("")
+      : `<tr><td colspan="5" style="color:var(--ink-3)">Nothing waiting. Every row in the inbox was applied automatically.</td></tr>`;
+  }
+
+  buildSeg("f-stream", "stream", [["all", "All"], ["bau", "Business as usual"], ["migration", "Migration project"]]);
+  buildSeg("f-seg", "seg", [["all", "All"], ["enterprise", "Enterprise"], ["premium_sme", "Premium SME"], ["sme", "SME"]]);
+  buildSeg(
+    "f-acq",
+    "acq",
+    [["all", "All"]].concat(Object.keys(ACQ).map((c) => [c, ACQ[c].name.replace(" Bank", "").replace(" Financial", "")]))
+  );
+
+  // The page opens on a real example rather than an empty box, so the first
+  // frame shows what the search does. Pick a merchant running two use cases
+  // with mixed outcomes, because that is the case the old one-row-per-merchant
+  // tracker could not represent.
+  function seedExample() {
+    const byName = new Map();
+    ALL.forEach((r) => {
+      if (!byName.has(r.name)) byName.set(r.name, []);
+      byName.get(r.name).push(r);
+    });
+    let best = null;
+    for (const [name, reqs] of byName) {
+      const mccs = new Set(reqs.map((r) => r.mcc)).size;
+      const states = new Set(reqs.map((r) => r.status)).size;
+      const score = mccs * 10 + states;
+      if (mccs > 1 && states > 2 && (!best || score > best.score)) best = { name, score };
+    }
+    return best ? best.name : ALL[0].name;
+  }
+
+  const search = document.getElementById("q");
+  search.addEventListener("input", () => renderResults(search.value));
+  search.value = seedExample();
+  renderResults(search.value);
+
+  renderInbox();
+  render();
+})();
+</script>

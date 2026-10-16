@@ -1,0 +1,4 @@
+# The deployed site is one self-contained index.html. The Python system in
+# system/ is not part of the deployment and is kept out of the upload so
+# nothing in it can be mistaken for a build step.
+system/

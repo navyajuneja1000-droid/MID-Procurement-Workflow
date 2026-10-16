@@ -1,0 +1,8 @@
+# Generated. Every one of these rebuilds from the scripts in a few seconds, and
+# keeping them in git would mean a 5MB diff on every run and a dataset in the
+# repo that disagrees with the code that made it.
+data/
+dashboard_data.json
+__pycache__/
+.pytest_cache/
+*.pyc
