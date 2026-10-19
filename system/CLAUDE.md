@@ -4,16 +4,16 @@ A portfolio product for fintech PM roles. It automates cards MID procurement
 for a payment aggregator and reports turnaround time honestly, which the
 spreadsheet it replaces cannot.
 
-**Phases 0, 1, 3, 4, 5, 6, 7 and 7a are complete**: data model, working-day
+**Phases 0, 1, 3, 4, 5, 6, 7, 7a and 8 are complete**: data model, working-day
 calendar, TAT engine, six invented acquirers, a synthetic dataset generator,
 the dashboard, the bank reply parser, the intake readiness check, the MCC
 catalogue, an editable restriction registry with recorded overrides, bank file
-generation with pre-flight checks, and 251 tests.
+generation with pre-flight checks, the SLA chaser, and 283 tests.
 
 ## Run it
 
 ```bash
-python -m pytest tests/ -q     # 251 tests, all rules encoded as checks
+python -m pytest tests/ -q     # 283 tests, all rules encoded as checks
 python example.py              # one merchant, two acquirers, figures to check by hand
 python build_dataset.py        # writes the full synthetic dataset to data/
 python parse_inbox.py          # parses data/emails and scores itself
@@ -22,6 +22,7 @@ python run_intake.py           # per-acquirer readiness and category eligibility
 python make_batch.py           # builds today's bank files and draft emails
 python review_restrictions.py  # the restriction registry and override outcomes
 python manage_restrictions.py --help   # add, retire and inspect restrictions
+python run_chaser.py           # today's chase list, drafts, and whether chasing works
 ```
 
 ## The domain, in short
@@ -174,7 +175,7 @@ rebuild.
 | ~~6~~ | ~~Bank file generation, pre-flight validation, draft email~~ **done** | |
 | ~~7~~ | ~~MCC catalogue and per-acquirer eligibility~~ **done** | |
 | ~~7a~~ | ~~Editable restriction registry, enforcement levels, recorded overrides~~ **done** | 7 |
-| 8 | SLA chaser and post-live website monitoring | 3, 7 |
+| ~~8~~ | ~~SLA chaser~~ **done**. Post-live website monitoring cut: see below | 3, 7 |
 | 9 | PRD and case study | all |
 
 Phase 3 is the first demoable product. Everything after it is enhancement
@@ -565,3 +566,88 @@ one row out of step with the codes, so the registry said "adult services" about
 the money transfer code. Nothing looked wrong until the report was printed
 next to the catalogue. The reasons are now built from the catalogue entry
 rather than typed beside the code.
+
+
+## The SLA chaser (phase 8)
+
+```bash
+python run_chaser.py           # writes data/chase_report.txt and data/outbox_chases/
+```
+
+Current run: 119 applications sitting with an acquirer, 36 past the agreed
+response time, 572 waiting on us and therefore not chased at all.
+
+**Post-live website monitoring was cut from this phase.** It needs to fetch
+live merchant sites, which this project has no honest way to test: a scanner
+proven against invented web pages proves nothing. It is also a different
+product from procurement. Building it here would have padded the project
+rather than finished it.
+
+### What the chaser refuses to do
+
+- **Chase the wrong party.** 572 of the open requests are waiting on us, not on
+  a bank. A request late because an acquirer asked for a document we have not
+  sent is not theirs to answer for, and chasing it spends credibility needed
+  for the ones that genuinely are late. Who owes the next move is derived from
+  the event log, not from a status field someone remembers to update.
+- **Chase on the wrong clock.** Lateness is the round the bank is holding right
+  now, never the total. A bank that answered twice quickly and is two days into
+  a third round is two days late, not twelve, and a chase it can disprove makes
+  the next one unreadable.
+- **Chase everything equally.** Days over, weighted by priority tier. The
+  weights are steep enough that a P0 one day late outranks a P4 six days late,
+  which is the call ops makes by hand anyway, and shallow enough that a P4
+  twelve days over still comes above that P0, so the queue does not starve its
+  own tail. Both of those are tests.
+- **Send the same email forever.** One nudge, one firmer follow-up naming the
+  consequence, then it stops emailing and goes on a list for a person to raise
+  with the relationship manager. A two-day cooldown on top. Automation that
+  escalates to a human at a defined point is credible; automation that keeps
+  sending is a robot arguing with a mail filter.
+- **Send at all.** Drafts land in `data/outbox_chases/` and a person sends
+  them, the same checkpoint as the bank files, with a test that asserts nothing
+  in the module can send.
+
+One email per acquirer rather than one per request, for the same reason bounces
+are consolidated per party. Every line quotes the date the application went in,
+the round, days held and the agreed number, because the only chase a bank
+cannot argue with is one that quotes its own commitment back. Each draft also
+invites the correction: if it is actually waiting on us, we want to be told.
+
+### Measuring whether chasing works, which is where this got interesting
+
+The naive comparison says chasing makes banks **slower**: chased rounds average
+9.5 working days against 4.4 for unchased. That is not an effect, it is the
+selection. Every chased round had already run past the SLA; the unchased group
+is mostly banks that answered on day two.
+
+Comparing across acquirers does not rescue it either. The chase goes out the
+day after each bank's own SLA, so on any given day the chased group is the
+banks with short SLAs and the unchased group is the banks with long ones. The
+first version of the report did exactly this and showed four banks with zero
+chases, which is what exposed it.
+
+Two fixes, and the second is the real one:
+
+1. **Compare inside each acquirer, on that acquirer's own chase day.** Same
+   bank, same clock, both arms already past that bank's SLA.
+2. **A holdout.** The chase rule is deterministic, so within any one acquirer
+   *every* eligible round was chased and there was no control group at all. The
+   effect was unmeasurable by construction. So 10% of eligible rounds are
+   deliberately never chased, chosen by a stable hash of the request id, with
+   P0 merchants excluded because the experiment is not worth running on the
+   accounts someone outside ops is already asking about.
+
+The cost is stated rather than hidden: a handful of merchants wait slightly
+longer, which is the price of knowing whether the other ninety percent of the
+chasing does anything.
+
+And the current answer is **no answer**, which the report says in those words.
+125 chased rounds against 9 held out is nowhere near enough, the largest
+stratum is 16 short of a twenty-a-side floor, and a chaser that printed a
+number from that would be publishing noise a team would then act on. The report
+also says plainly that nothing in this dataset was ever actually chased, so
+what it demonstrates is the method, not a result about real banks.
+
+There is a test that plants a known two-day effect and checks the estimator
+recovers it, which is what makes the rest of the module worth believing.
