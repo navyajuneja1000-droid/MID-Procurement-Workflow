@@ -1,8 +1,8 @@
 # MID Procurement Automation
 
-A portfolio product for fintech PM roles. It automates cards MID procurement
-for a payment aggregator and reports turnaround time honestly, which the
-spreadsheet it replaces cannot.
+A demonstration build. It automates cards MID procurement for a payment
+aggregator and reports turnaround time honestly, which the spreadsheet it
+replaces cannot. Everything it runs on is synthetic.
 
 **Phases 0, 1, 3, 4, 5, 6, 7, 7a and 8 are complete**: data model, working-day
 calendar, TAT engine, six invented acquirers, a synthetic dataset generator,

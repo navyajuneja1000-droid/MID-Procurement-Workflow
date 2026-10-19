@@ -1,0 +1,1198 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MID Procurement Automation — Product requirements</title>
+<meta name="description" content="Product requirements for an automated cards MID procurement system: intake checks, per-acquirer category rules, bank file generation, reply parsing, chasing and turnaround reporting.">
+<meta name="robots" content="noindex">
+<style>
+
+/* ============ TOKENS ============ */
+:root{
+  --paper:#ECEEF0; --paper-2:#E4E7EA; --card:#F8F9FA; --card-2:#FFFFFF;
+  --ink:#131A24; --ink-2:#4A5462; --ink-3:#727C89; --ink-4:#98A1AC;
+  --rule:#D2D8DE; --rule-2:#BFC7CF;
+  --accent:#2B4ACB; --accent-soft:#E1E6FA; --accent-ink:#1E36A0;
+  --var:#C4442C; --var-soft:#F7E3DF;
+  --teal:#00897A; --brass:#A8760A;
+  --deep:#131A24; --deep-2:#1E2733; --on-deep:#E9ECEF; --on-deep-2:#A0AAB6; --on-deep-3:#78838F;
+  --deep-accent:#6B82F0; --deep-var:#DB6E55; --deep-teal:#00A996; --deep-brass:#B58A20;
+  --focus:#2B4ACB;
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px; --s8:72px; --s9:104px;
+  --serif:"Newsreader",Georgia,"Times New Roman",serif;
+  --sans:"Archivo","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --maxw:1180px;
+  --shadow:0 1px 2px rgba(19,26,36,.05), 0 8px 28px -18px rgba(19,26,36,.28);
+}
+
+/* ============ BASE ============ */
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none !important}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto} *{animation-duration:.001ms !important;transition-duration:.001ms !important}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);
+  font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;font-synthesis-weight:none}
+img{max-width:100%;display:block}
+a{color:inherit}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:3px;border-radius:2px}
+h1,h2,h3,h4{margin:0;font-family:var(--serif);font-weight:400;letter-spacing:-.012em;text-wrap:balance;line-height:1.12}
+p{margin:0}
+ul,ol{margin:0;padding:0;list-style:none}
+table{border-collapse:collapse;width:100%}
+.num{font-variant-numeric:tabular-nums lining-nums}
+
+/* ============ LAYOUT ============ */
+.wrap{max-width:var(--maxw);margin:0 auto;padding-inline:clamp(20px,5vw,60px)}
+.sec{padding-block:var(--s8)}
+.sec + .sec{border-top:1px solid var(--rule)}
+@media (max-width:760px){.sec{padding-block:var(--s7)}}
+
+.sec-head{display:grid;grid-template-columns:150px minmax(0,1fr);gap:var(--s5);margin-bottom:var(--s7)}
+.sec-head .rail{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);padding-top:9px}
+.sec-head h2{font-size:clamp(28px,4.2vw,44px);font-weight:400}
+.sec-head .dek{margin-top:var(--s3);color:var(--ink-2);font-size:17px;max-width:62ch}
+@media (max-width:860px){.sec-head{grid-template-columns:1fr;gap:var(--s3);margin-bottom:var(--s6)}.sec-head .rail{padding-top:0}}
+
+.mono-label{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.lede{font-size:19px;line-height:1.55;color:var(--ink-2);max-width:64ch}
+@media (max-width:640px){.lede{font-size:17px}}
+
+/* ============ PROVENANCE CHIPS ============ */
+.pv{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9.5px;font-weight:500;
+  letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;white-space:nowrap;vertical-align:middle;
+  border-radius:2px;line-height:1.5}
+.pv::before{content:"";width:5px;height:5px;flex:none}
+.pv-result{color:var(--accent-ink);background:var(--accent-soft);border:1px solid transparent}
+.pv-result::before{background:var(--accent)}
+.pv-target{color:var(--ink-2);background:transparent;border:1px solid var(--rule-2)}
+.pv-target::before{background:transparent;border:1px solid var(--ink-3);border-radius:50%}
+.pv-model{color:var(--ink-2);background:transparent;border:1px dashed var(--rule-2)}
+.pv-model::before{background:repeating-linear-gradient(45deg,var(--ink-3) 0 1px,transparent 1px 3px)}
+.pv-source{color:var(--teal);background:transparent;border:1px solid color-mix(in srgb,var(--teal) 35%,transparent)}
+.pv-source::before{background:var(--teal);border-radius:50%}
+
+.legend{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s5);align-items:center;
+  padding:var(--s4) 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.legend .li{display:flex;align-items:center;gap:var(--s2);font-size:13px;color:var(--ink-2)}
+.legend .li b{font-weight:500;color:var(--ink)}
+
+/* ============ NAV ============ */
+.nav{position:sticky;top:0;z-index:60;background:color-mix(in srgb,var(--paper) 88%,transparent);
+  backdrop-filter:blur(12px);border-bottom:1px solid var(--rule)}
+.nav-in{max-width:var(--maxw);margin:0 auto;padding-inline:clamp(20px,5vw,60px);
+  height:58px;display:flex;align-items:center;gap:var(--s5)}
+.brand{font-family:var(--serif);font-size:19px;text-decoration:none;letter-spacing:-.01em;white-space:nowrap;flex:none}
+.brand .dot{color:var(--accent)}
+.nav-links{display:flex;gap:var(--s5);margin-left:auto;align-items:center}
+.nav-links a{font-size:14px;text-decoration:none;color:var(--ink-2);padding:4px 0;border-bottom:1px solid transparent}
+.nav-links a:hover{color:var(--ink);border-bottom-color:var(--accent)}
+.nav-tools{display:flex;gap:var(--s2);margin-left:var(--s4);flex:none}
+.icon-btn{width:32px;height:32px;display:grid;place-items:center;background:transparent;
+  border:1px solid var(--rule);border-radius:3px;cursor:pointer;color:var(--ink-2);padding:0}
+.icon-btn:hover{border-color:var(--rule-2);color:var(--ink)}
+@media (max-width:820px){.nav-links{display:none}.nav-tools{margin-left:auto}}
+.backlink{display:inline-flex;align-items:center;gap:var(--s2);font-family:var(--mono);font-size:11px;
+  letter-spacing:.12em;text-transform:uppercase;text-decoration:none;color:var(--ink-2);
+  border:1px solid var(--rule);border-radius:3px;padding:6px 10px;background:var(--card)}
+.backlink:hover{color:var(--ink);border-color:var(--rule-2)}
+
+/* ============ HERO ============ */
+.hero{padding-top:var(--s8);padding-bottom:var(--s7)}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:clamp(28px,5vw,64px);align-items:start}
+@media (max-width:900px){.hero-grid{grid-template-columns:1fr}.hero{padding-top:var(--s6)}}
+.hero h1{font-size:clamp(38px,6.6vw,72px);font-weight:400;line-height:1.02;letter-spacing:-.026em;margin-block:var(--s4) var(--s5)}
+.hero h1 em{font-style:italic;font-weight:300;color:var(--accent)}
+.hero .lede{max-width:56ch}
+.hero-cta{display:flex;flex-wrap:wrap;gap:var(--s3);margin-top:var(--s6)}
+.btn{display:inline-flex;align-items:center;gap:var(--s2);padding:11px 20px;border-radius:3px;
+  font-size:14px;font-weight:500;text-decoration:none;border:1px solid transparent;cursor:pointer;transition:.15s}
+.btn-p{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.btn-p:hover{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-s{border-color:var(--rule-2);color:var(--ink);background:transparent}
+.btn-s:hover{border-color:var(--ink);background:var(--card)}
+
+.portrait{position:relative;aspect-ratio:4/5;border:1px solid var(--rule);background:var(--card);
+  border-radius:3px;overflow:hidden;display:grid;place-items:center}
+.portrait img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;opacity:0;transition:opacity .4s}
+.portrait img.loaded{opacity:1}
+.portrait .ph{text-align:center;padding:var(--s5);color:var(--ink-4)}
+.portrait .ph svg{margin:0 auto var(--s3)}
+.portrait .ph span{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;display:block;line-height:1.9}
+@media (max-width:900px){.portrait{max-width:300px;aspect-ratio:1/1}}
+.hero-meta{margin-top:var(--s4);display:flex;flex-direction:column;gap:var(--s2)}
+.hero-meta .row{display:flex;justify-content:space-between;gap:var(--s3);font-size:13px;
+  padding-block:7px;border-bottom:1px solid var(--rule)}
+.hero-meta .row dt{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.hero-meta .row dd{margin:0;text-align:right;color:var(--ink)}
+
+.proofs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--rule);
+  border:1px solid var(--rule);margin-top:var(--s7);border-radius:3px;overflow:hidden}
+.proof{background:var(--card);padding:var(--s5)}
+.proof .v{font-family:var(--serif);font-size:clamp(30px,4.4vw,42px);line-height:1;letter-spacing:-.02em;display:block}
+.proof .k{margin-top:var(--s3);font-size:13.5px;color:var(--ink-2);line-height:1.45}
+.proof .pv{margin-top:var(--s3)}
+@media (max-width:760px){.proofs{grid-template-columns:1fr}}
+
+/* ============ THEMES / THROUGH-LINE ============ */
+.themes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--rule);
+  border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+@media (max-width:900px){.themes{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.themes{grid-template-columns:1fr}}
+.theme{background:var(--card);padding:var(--s5);text-align:left;border:0;cursor:pointer;
+  display:flex;flex-direction:column;gap:var(--s3);transition:background .15s;min-height:100%}
+.theme:hover{background:var(--card-2)}
+.theme[aria-selected="true"]{background:var(--deep);color:var(--on-deep)}
+.theme[aria-selected="true"] .t-n,.theme[aria-selected="true"] .t-d{color:var(--on-deep-2)}
+.theme .t-n{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.theme .t-h{font-family:var(--serif);font-size:20px;line-height:1.16;letter-spacing:-.01em}
+.theme .t-d{font-size:13.5px;color:var(--ink-2);line-height:1.45}
+.evidence{margin-top:var(--s6);border:1px solid var(--rule);border-radius:3px;background:var(--card);padding:var(--s6)}
+.ev-head{display:flex;flex-wrap:wrap;gap:var(--s3);align-items:baseline;justify-content:space-between;
+  padding-bottom:var(--s4);border-bottom:1px solid var(--rule);margin-bottom:var(--s5)}
+.ev-head h3{font-size:24px}
+.ev-list{display:grid;gap:var(--s5)}
+.ev-item{display:grid;grid-template-columns:200px minmax(0,1fr);gap:var(--s5);align-items:start}
+@media (max-width:760px){.ev-item{grid-template-columns:1fr;gap:var(--s2)}.evidence{padding:var(--s5)}}
+.ev-item .src{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--ink-3);padding-top:3px}
+.ev-item .src a{color:var(--accent);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--accent) 35%,transparent)}
+.ev-item .src a:hover{border-bottom-color:var(--accent)}
+.ev-item q{quotes:"“" "”";font-family:var(--serif);font-size:18px;line-height:1.45;color:var(--ink);display:block}
+.ev-item .note{margin-top:6px;font-size:14px;color:var(--ink-2)}
+
+/* ============ WATERFALL ============ */
+.wf{border:1px solid var(--rule);border-radius:3px;background:var(--card);overflow:hidden}
+.wf-ctl{display:flex;flex-wrap:wrap;gap:var(--s5);align-items:center;padding:var(--s5);
+  border-bottom:1px solid var(--rule);background:var(--card-2)}
+.ctl{display:flex;flex-direction:column;gap:6px;min-width:210px;flex:1}
+.ctl > label:not(.switch){font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.ctl .val{font-family:var(--serif);font-size:22px}
+input[type=range]{width:100%;accent-color:var(--accent);height:22px;cursor:pointer}
+.switch{display:inline-flex;align-items:center;gap:var(--s3);cursor:pointer;font-size:14px;user-select:none}
+.switch input{position:absolute;opacity:0;width:0;height:0}
+.switch .track{width:38px;height:21px;border-radius:11px;background:var(--rule-2);position:relative;transition:.18s;flex:none}
+.switch .track::after{content:"";position:absolute;top:2px;left:2px;width:17px;height:17px;border-radius:50%;
+  background:var(--card-2);transition:.18s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.switch input:checked + .track{background:var(--var)}
+.switch input:checked + .track::after{transform:translateX(17px)}
+.switch input:focus-visible + .track{outline:2px solid var(--focus);outline-offset:2px}
+.wf-rows{padding:var(--s5) var(--s5) var(--s2)}
+.wf-row{display:grid;grid-template-columns:190px minmax(0,1fr) 128px;gap:var(--s4);align-items:center;
+  padding-block:9px;border-bottom:1px solid var(--rule)}
+.wf-row:last-child{border-bottom:0}
+.wf-row .lb{font-size:14px;color:var(--ink);display:flex;flex-direction:column;gap:1px}
+.wf-row .lb small{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--ink-3)}
+.wf-track{position:relative;height:26px;background:var(--paper-2);border-radius:2px;overflow:hidden}
+.wf-bar{position:absolute;top:0;bottom:0;border-radius:1px;min-width:2px;transition:left .35s cubic-bezier(.4,0,.2,1),width .35s cubic-bezier(.4,0,.2,1)}
+.wf-row .am{text-align:right;font-family:var(--serif);font-size:17px;white-space:nowrap}
+.wf-row.total{border-top:2px solid var(--ink);border-bottom:0;margin-top:var(--s2);padding-top:var(--s4)}
+.wf-row.total .lb{font-weight:600}
+.wf-row.total .am{font-size:22px}
+@media (max-width:720px){
+  .wf-row{grid-template-columns:1fr auto;gap:var(--s2) var(--s3)}
+  .wf-track{grid-column:1/-1;order:3}
+  .wf-row .am{order:2}
+}
+.wf-out{border-top:1px solid var(--rule);background:var(--deep);color:var(--on-deep);padding:var(--s5);
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s5)}
+@media (max-width:760px){.wf-out{grid-template-columns:1fr;gap:var(--s4)}}
+.wf-out .o-k{font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--on-deep-3)}
+.wf-out .o-v{font-family:var(--serif);font-size:clamp(26px,3.4vw,34px);line-height:1.1;margin-top:6px}
+.wf-out .o-n{font-size:13px;color:var(--on-deep-2);margin-top:6px;line-height:1.45}
+.hl-var{color:var(--deep-var)}
+.hl-ok{color:var(--deep-teal)}
+
+/* ============ WORK ============ */
+.filters{display:flex;flex-wrap:wrap;gap:var(--s2);margin-bottom:var(--s6)}
+.chip{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  padding:7px 12px;border:1px solid var(--rule);background:transparent;color:var(--ink-2);
+  border-radius:3px;cursor:pointer;transition:.15s}
+.chip:hover{border-color:var(--rule-2);color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.work{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+.wk{background:var(--card);padding:var(--s6);display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);
+  gap:var(--s6);text-decoration:none;transition:background .15s;align-items:start}
+.wk:hover{background:var(--card-2)}
+.wk[hidden]{display:none}
+@media (max-width:860px){.wk{grid-template-columns:1fr;gap:var(--s5);padding:var(--s5)}}
+.wk .idx{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.wk h3{font-size:clamp(24px,3.2vw,32px);margin-block:var(--s3) var(--s3)}
+.wk .fr{color:var(--ink-2);font-size:16px;line-height:1.5;max-width:52ch}
+.wk .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:var(--s4)}
+.wk .tag{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-3);border:1px solid var(--rule);padding:3px 7px;border-radius:2px}
+.wk .go{margin-top:var(--s5);display:inline-flex;align-items:center;gap:8px;font-size:14px;
+  font-weight:500;color:var(--accent)}
+.wk:hover .go .arw{transform:translateX(4px)}
+.arw{transition:transform .2s}
+.wk-stat{border-left:2px solid var(--accent);padding-left:var(--s4)}
+.wk-stat .v{font-family:var(--serif);font-size:clamp(28px,3.8vw,38px);line-height:1.05;display:block;letter-spacing:-.02em}
+.wk-stat .k{font-size:13.5px;color:var(--ink-2);margin-top:var(--s2);line-height:1.45}
+.wk-stat .pv{margin-top:var(--s3)}
+
+/* ============ JOURNEY ============ */
+.jrn{border:1px solid var(--rule);border-radius:3px;background:var(--card);overflow:hidden}
+.jrn-chart{overflow-x:auto}
+.jrn-chart svg{display:block;min-width:720px}
+.jrn-node{cursor:pointer}
+.jrn-node circle.hit{fill:transparent}
+.jrn-detail{border-top:1px solid var(--rule);padding:var(--s6);display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:var(--s6)}
+@media (max-width:800px){.jrn-detail{grid-template-columns:1fr;gap:var(--s4);padding:var(--s5)}}
+.jrn-detail h3{font-size:26px}
+.jrn-detail .org{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:var(--s2)}
+.jrn-detail .when{font-family:var(--mono);font-size:12px;color:var(--ink-3);margin-top:var(--s2)}
+.jrn-detail .shift{margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--rule)}
+.jrn-detail .shift .mono-label{display:block;margin-bottom:6px}
+.jrn-pts{display:grid;gap:var(--s3)}
+.jrn-pts li{position:relative;padding-left:18px;font-size:14.5px;color:var(--ink-2);line-height:1.5}
+.jrn-pts li::before{content:"";position:absolute;left:0;top:9px;width:5px;height:5px;background:var(--accent);border-radius:50%}
+.jrn-pts li b{color:var(--ink);font-weight:600}
+
+/* ============ MATRIX ============ */
+.mx-scroll{overflow-x:auto;border:1px solid var(--rule);border-radius:3px;background:var(--card)}
+table.mx{min-width:1000px;font-size:13.5px}
+table.mx th,table.mx td{padding:11px var(--s3);text-align:center;border-bottom:1px solid var(--rule);vertical-align:middle}
+table.mx thead th{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:500;background:var(--card-2);position:sticky;top:0;z-index:2;
+  border-bottom:1px solid var(--rule-2);line-height:1.4}
+table.mx th.cap,table.mx td.cap{text-align:left;position:sticky;left:0;background:var(--card);z-index:1;
+  min-width:238px;font-weight:500;color:var(--ink);border-right:1px solid var(--rule)}
+table.mx thead th.cap{background:var(--card-2);z-index:3}
+table.mx tbody tr:hover td{background:var(--card-2)}
+table.mx tbody tr:hover td.cap{background:var(--card-2)}
+.mk{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:2px;text-decoration:none;
+  background:var(--accent-soft);color:var(--accent-ink);transition:.15s}
+.mk:hover{background:var(--accent);color:#fff}
+.mk svg{display:block}
+.mx-empty{color:var(--ink-4);font-family:var(--mono);font-size:12px}
+
+/* ============ EXPERIENCE ============ */
+.xp{display:grid;gap:0}
+.xp-item{display:grid;grid-template-columns:190px minmax(0,1fr);gap:var(--s6);
+  padding-block:var(--s6);border-bottom:1px solid var(--rule)}
+.xp-item:first-child{padding-top:0}
+@media (max-width:800px){.xp-item{grid-template-columns:1fr;gap:var(--s3)}}
+.xp-when{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--ink-3);line-height:1.7}
+.xp-when b{display:block;color:var(--ink);font-size:12px;letter-spacing:.11em;text-transform:uppercase;font-weight:500;margin-bottom:4px}
+.xp-body h3{font-size:24px}
+.xp-body .role{font-size:15px;color:var(--ink-2);margin-top:6px}
+.xp-out{display:grid;gap:var(--s3);margin-top:var(--s5)}
+.xp-out li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--s3);align-items:baseline;font-size:15px;line-height:1.5;color:var(--ink-2)}
+.xp-out li .n{font-family:var(--serif);font-size:18px;color:var(--ink);white-space:nowrap;min-width:62px}
+.edu{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s5);margin-top:var(--s6)}
+@media (max-width:700px){.edu{grid-template-columns:1fr}}
+.edu-card{border:1px solid var(--rule);border-radius:3px;padding:var(--s5);background:var(--card)}
+.edu-card h4{font-size:19px}
+.edu-card .m{font-size:14px;color:var(--ink-2);margin-top:6px}
+.edu-card .y{font-family:var(--mono);font-size:11px;color:var(--ink-3);letter-spacing:.08em;margin-top:var(--s3)}
+
+/* ============ OFF THE CLOCK ============ */
+.otc{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1px;background:var(--rule);
+  border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+@media (max-width:860px){.otc{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.otc{grid-template-columns:1fr}}
+.otc div{background:var(--card);padding:var(--s5)}
+.otc .v{font-family:var(--serif);font-size:30px;line-height:1;display:block}
+.otc .k{font-size:13.5px;color:var(--ink-2);margin-top:var(--s3);line-height:1.45}
+
+/* ============ CONTACT ============ */
+.contact{background:var(--deep);color:var(--on-deep);border-radius:3px;padding:clamp(28px,5vw,64px);
+  display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:clamp(28px,5vw,64px);align-items:start}
+@media (max-width:820px){.contact{grid-template-columns:1fr}}
+.contact h2{font-size:clamp(30px,4.6vw,46px);color:var(--on-deep)}
+.contact .lede{color:var(--on-deep-2);margin-top:var(--s4)}
+.contact .seek{margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid var(--deep-2);color:var(--on-deep-2);font-size:15px}
+.contact .seek b{color:var(--on-deep);font-weight:500}
+.cx{display:grid;gap:0}
+.cx a,.cx div{display:grid;grid-template-columns:96px minmax(0,1fr);gap:var(--s3);align-items:baseline;
+  padding-block:var(--s4);border-bottom:1px solid var(--deep-2);text-decoration:none;color:var(--on-deep);font-size:15px}
+.cx a:first-child,.cx div:first-child{border-top:1px solid var(--deep-2)}
+.cx .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--on-deep-3)}
+.cx .v{word-break:break-word}
+.cx a:hover .v{color:var(--deep-accent)}
+
+.foot{border-top:1px solid var(--rule);padding-block:var(--s6);display:flex;flex-wrap:wrap;
+  gap:var(--s4);justify-content:space-between;align-items:center;font-size:13px;color:var(--ink-3)}
+.foot .mono-label{font-size:10.5px}
+
+/* ============ CASE STUDY SHELL ============ */
+.cs-hero{padding-top:var(--s7);padding-bottom:var(--s7);border-bottom:1px solid var(--rule)}
+.cs-kicker{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.cs-hero h1{font-size:clamp(34px,6vw,64px);font-weight:400;letter-spacing:-.026em;margin-block:var(--s4) var(--s5);line-height:1.04}
+.cs-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s5);margin-top:var(--s7);
+  padding-top:var(--s5);border-top:1px solid var(--rule)}
+@media (max-width:760px){.cs-meta{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s4)}}
+.cs-meta .k{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3)}
+.cs-meta .v{margin-top:6px;font-size:14.5px;line-height:1.45}
+.cs-meta .v a{color:var(--accent);text-decoration:none;border-bottom:1px solid color-mix(in srgb,var(--accent) 35%,transparent);word-break:break-word}
+
+.act{padding-block:var(--s8);border-bottom:1px solid var(--rule)}
+@media (max-width:760px){.act{padding-block:var(--s7)}}
+.act-head{display:grid;grid-template-columns:150px minmax(0,1fr);gap:var(--s5);margin-bottom:var(--s6)}
+@media (max-width:860px){.act-head{grid-template-columns:1fr;gap:var(--s3)}}
+.act-head .rail{font-family:var(--mono);font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);padding-top:8px}
+.act-head h2{font-size:clamp(26px,3.9vw,38px)}
+.act-head .dek{margin-top:var(--s3);color:var(--ink-2);font-size:16.5px;max-width:62ch}
+.act-body{display:grid;grid-template-columns:150px minmax(0,1fr);gap:var(--s5)}
+.act-body > .rail{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-4)}
+@media (max-width:860px){.act-body{grid-template-columns:1fr}.act-body > .rail{display:none}}
+.act-body > *,.grid-2 > *,.grid-3 > *,.grid-4 > *{min-width:0}
+.prose{max-width:66ch;display:grid;gap:var(--s4);font-size:16.5px;line-height:1.62;color:var(--ink-2)}
+.prose b,.prose strong{color:var(--ink);font-weight:600}
+.pull{border-left:2px solid var(--accent);padding:var(--s2) 0 var(--s2) var(--s5);margin-block:var(--s2);
+  font-family:var(--serif);font-size:clamp(20px,2.7vw,26px);line-height:1.35;color:var(--ink);font-style:italic;font-weight:300}
+.pull cite{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--ink-3);font-style:normal;margin-top:var(--s3)}
+
+/* generic blocks */
+.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s5)}
+.grid-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s5)}
+.grid-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s5)}
+@media (max-width:900px){.grid-4{grid-template-columns:repeat(2,minmax(0,1fr))}.grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:620px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}}
+.panel{border:1px solid var(--rule);border-radius:3px;background:var(--card);padding:var(--s5)}
+.panel h4{font-size:19px;margin-bottom:var(--s3)}
+.panel p{font-size:14.5px;color:var(--ink-2);line-height:1.5}
+.panel.dark{background:var(--deep);color:var(--on-deep);border-color:var(--deep-2)}
+.panel.dark p{color:var(--on-deep-2)}
+.panel.dark h4{color:var(--on-deep)}
+.stat{display:block}
+.stat .v{font-family:var(--serif);font-size:clamp(28px,4vw,38px);line-height:1.05;letter-spacing:-.02em;display:block}
+.stat .k{font-size:13.5px;color:var(--ink-2);margin-top:var(--s2);line-height:1.45}
+.panel.dark .stat .k{color:var(--on-deep-2)}
+.bullets{display:grid;gap:var(--s3)}
+.bullets li{position:relative;padding-left:18px;font-size:15px;line-height:1.55;color:var(--ink-2)}
+.bullets li::before{content:"";position:absolute;left:0;top:9px;width:5px;height:5px;background:var(--accent);border-radius:50%}
+.bullets li b{color:var(--ink);font-weight:600}
+.tags-row{display:flex;flex-wrap:wrap;gap:6px}
+.tags-row span{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--ink-2);
+  border:1px solid var(--rule);padding:5px 9px;border-radius:2px;background:var(--card)}
+.note{font-size:13px;color:var(--ink-3);line-height:1.5;font-style:italic}
+.cite{font-family:var(--mono);font-size:10.5px;color:var(--ink-4);letter-spacing:.04em;margin-top:var(--s3)}
+
+/* data table */
+.dt-scroll{overflow-x:auto;border:1px solid var(--rule);border-radius:3px;background:var(--card)}
+table.dt{min-width:560px;font-size:14px}
+table.dt th,table.dt td{padding:11px var(--s4);text-align:left;border-bottom:1px solid var(--rule)}
+table.dt thead th{font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:500;background:var(--card-2)}
+table.dt td.n,table.dt th.n{text-align:right;font-variant-numeric:tabular-nums}
+table.dt tbody tr:last-child td{border-bottom:0}
+table.dt td b{font-weight:600;color:var(--ink)}
+table.dt tr.hi td{background:var(--accent-soft)}
+
+/* PRD contents nav */
+.prd-toc{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--rule);
+  border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+@media (max-width:820px){.prd-toc{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.prd-toc{grid-template-columns:1fr}}
+.prd-toc a{background:var(--card);padding:var(--s4) var(--s5);display:block;text-decoration:none;
+  color:var(--ink-2);font-size:14.5px;line-height:1.35;transition:background .15s,color .15s}
+.prd-toc a:hover{background:var(--card-2);color:var(--ink)}
+.prd-toc .n{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.1em;
+  color:var(--ink-4);margin-bottom:5px}
+#view-mid-prd code{font-family:var(--mono);font-size:12.5px;color:var(--ink)}
+
+/* strike cards for non-goals */
+.ng{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--rule);
+  border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+@media (max-width:820px){.ng{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.ng{grid-template-columns:1fr}}
+.ng div{background:var(--card);padding:var(--s5);position:relative}
+.ng .t{font-size:16px;color:var(--ink-3);text-decoration:line-through;text-decoration-color:var(--var);
+  text-decoration-thickness:1.5px}
+.ng .w{font-size:13.5px;color:var(--ink-2);margin-top:var(--s3);line-height:1.45}
+
+/* steps */
+.steps{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+.step{background:var(--card);padding:var(--s5);display:grid;grid-template-columns:56px minmax(0,1fr);gap:var(--s5);align-items:start}
+@media (max-width:620px){.step{grid-template-columns:40px minmax(0,1fr);gap:var(--s4);padding:var(--s4)}}
+.step .n{font-family:var(--serif);font-size:30px;line-height:1;color:var(--ink-4);letter-spacing:-.02em}
+.step h4{font-size:18px;margin-bottom:6px}
+.step p{font-size:14.5px;color:var(--ink-2);line-height:1.55}
+
+/* comparison two-col */
+.vs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--rule);
+  border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+@media (max-width:680px){.vs{grid-template-columns:1fr}}
+.vs > div{background:var(--card);padding:var(--s5)}
+.vs .hd{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  padding-bottom:var(--s3);margin-bottom:var(--s4);border-bottom:1px solid var(--rule)}
+.vs .before .hd{color:var(--var)}
+.vs .after .hd{color:var(--teal)}
+.vs ul{display:grid;gap:var(--s3)}
+.vs li{font-size:14.5px;line-height:1.5;color:var(--ink-2);position:relative;padding-left:20px}
+.vs li::before{position:absolute;left:0;top:0;font-family:var(--mono)}
+.vs .before li::before{content:"—";color:var(--var)}
+.vs .after li::before{content:"+";color:var(--teal)}
+
+/* metric-decision spotlight */
+.mdec{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s5);align-items:stretch}
+@media (max-width:760px){.mdec{grid-template-columns:1fr}}
+.mdec > div{border:1px solid var(--rule);border-radius:3px;padding:var(--s6)}
+.mdec .rej{background:var(--card);opacity:.82}
+.mdec .rej .h{color:var(--var)}
+.mdec .cho{background:var(--deep);color:var(--on-deep);border-color:var(--deep-2)}
+.mdec .cho .h{color:var(--deep-teal)}
+.mdec .h{font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:var(--s4)}
+.mdec .m{font-family:var(--serif);font-size:clamp(21px,3vw,27px);line-height:1.2}
+.mdec .rej .m{text-decoration:line-through;text-decoration-color:var(--var);text-decoration-thickness:1.5px;color:var(--ink-3)}
+.mdec .why{margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--rule);font-size:14.5px;line-height:1.55;color:var(--ink-2)}
+.mdec .cho .why{border-top-color:var(--deep-2);color:var(--on-deep-2)}
+
+/* taxonomy explorer */
+.tax{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:var(--s5)}
+@media (max-width:820px){.tax{grid-template-columns:1fr}}
+.tax-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--rule);
+  border:1px solid var(--rule);border-radius:3px;overflow:hidden;align-content:start;align-self:start}
+@media (max-width:520px){.tax-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tax-b{background:var(--card);border:0;padding:13px var(--s3);font-size:12.5px;cursor:pointer;
+  color:var(--ink-2);text-align:center;transition:.14s;line-height:1.35;min-height:56px}
+.tax-b:hover{background:var(--card-2);color:var(--ink)}
+.tax-b[aria-pressed="true"]{background:var(--accent);color:#fff}
+.tax-detail{border:1px solid var(--rule);border-radius:3px;background:var(--card);padding:var(--s5);align-self:start}
+.tax-detail .tn{font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--accent)}
+.tax-detail h4{font-size:22px;margin-block:var(--s2) var(--s3)}
+.tax-detail p{font-size:14.5px;color:var(--ink-2);line-height:1.55}
+.tax-fig{margin-top:var(--s5);display:grid;gap:0;border-top:1px solid var(--rule)}
+.tax-fig .r{display:flex;justify-content:space-between;gap:var(--s3);padding-block:9px;border-bottom:1px solid var(--rule);font-size:14px}
+.tax-fig .r .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.tax-fig .r .v{font-variant-numeric:tabular-nums;font-family:var(--serif);font-size:16px}
+.tax-fig .r.res .v{color:var(--var)}
+
+/* simulator */
+.sim{border:1px solid var(--rule);border-radius:3px;background:var(--card);overflow:hidden}
+.sim-ctl{padding:var(--s5);border-bottom:1px solid var(--rule);background:var(--card-2);
+  display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);gap:var(--s6);align-items:center}
+@media (max-width:760px){.sim-ctl{grid-template-columns:1fr;gap:var(--s5)}}
+.wbar{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;
+  letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);margin-top:4px}
+.gws{display:grid;gap:1px;background:var(--rule)}
+.gw{background:var(--card);padding:var(--s4) var(--s5);display:grid;
+  grid-template-columns:minmax(0,1.4fr) repeat(3,minmax(0,.8fr)) 78px;gap:var(--s4);align-items:center;transition:background .2s}
+.gw.win{background:var(--accent-soft)}
+.gw.down{opacity:.55}
+@media (max-width:820px){
+  .gw{grid-template-columns:minmax(0,1fr) 78px;gap:var(--s2) var(--s4);padding:var(--s4)}
+  .gw .m{grid-column:auto}
+}
+.gw .nm{font-size:15px;font-weight:500;display:flex;flex-direction:column;gap:2px}
+.gw .nm small{font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--ink-3);font-weight:400}
+.gw .m{display:flex;flex-direction:column;gap:2px}
+.gw .m .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.gw .m .v{font-variant-numeric:tabular-nums;font-size:15px;font-family:var(--serif)}
+.gw .sc{text-align:right}
+.gw .sc .v{font-family:var(--serif);font-size:21px;font-variant-numeric:tabular-nums}
+.gw .sc .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.gw-head{background:var(--card-2);padding:9px var(--s5);display:grid;
+  grid-template-columns:minmax(0,1.4fr) repeat(3,minmax(0,.8fr)) 78px;gap:var(--s4);
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+@media (max-width:820px){.gw-head{display:none}}
+.gw-head .sc{text-align:right}
+.sim-out{background:var(--deep);color:var(--on-deep);padding:var(--s5);display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s5)}
+@media (max-width:860px){.sim-out{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s4)}}
+@media (max-width:460px){.sim-out{grid-template-columns:1fr}}
+.sim-out .k{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--on-deep-3)}
+.sim-out .v{font-family:var(--serif);font-size:clamp(22px,3vw,30px);line-height:1.1;margin-top:6px;font-variant-numeric:tabular-nums}
+.sim-out .d{font-size:12.5px;color:var(--on-deep-2);margin-top:5px;line-height:1.4}
+
+/* toggle group */
+.tg{display:inline-flex;border:1px solid var(--rule);border-radius:3px;overflow:hidden;background:var(--card)}
+.tg button{padding:8px 15px;border:0;background:transparent;cursor:pointer;font-family:var(--mono);
+  font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);transition:.14s}
+.tg button + button{border-left:1px solid var(--rule)}
+.tg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+
+/* charts */
+.fig{border:1px solid var(--rule);border-radius:3px;background:var(--card);padding:var(--s5)}
+.fig figcaption{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-3);margin-bottom:var(--s4)}
+.fig .src{font-family:var(--mono);font-size:10px;color:var(--ink-4);margin-top:var(--s4);letter-spacing:.03em}
+.fig svg{display:block;width:100%;height:auto;overflow:visible}
+.fig .sv-scroll{overflow-x:auto}
+.ch-t{font-size:11px;font-family:var(--mono);fill:var(--ink-3);letter-spacing:.04em}
+.ch-v{font-size:12px;font-family:var(--serif);fill:var(--ink)}
+.ch-g{stroke:var(--rule);stroke-width:1}
+.ch-ax{stroke:var(--rule-2);stroke-width:1}
+.lgd{display:flex;flex-wrap:wrap;gap:var(--s4);margin-top:var(--s4)}
+.lgd span{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-2)}
+.lgd i{width:11px;height:11px;border-radius:2px;flex:none}
+
+/* pipeline / funnel */
+.fn{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+.fn-r{background:var(--card);padding:var(--s4) var(--s5);display:grid;
+  grid-template-columns:200px minmax(0,1fr) 108px 78px;gap:var(--s4);align-items:center}
+@media (max-width:820px){
+  .fn-r{grid-template-columns:minmax(0,1fr) 96px;gap:6px var(--s3);padding:var(--s4)}
+  .fn-r .bar{grid-column:1/-1;order:4}
+  .fn-r .cv{order:3;text-align:left;font-size:11.5px}
+}
+.fn-r .lb{font-size:14px;line-height:1.35}
+.fn-r .lb small{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ink-3);margin-top:2px}
+.fn-r .bar{height:10px;background:var(--paper-2);border-radius:2px;overflow:hidden}
+.fn-r .bar i{display:block;height:100%;background:var(--accent);border-radius:2px}
+.fn-r .vv{text-align:right;font-family:var(--serif);font-size:18px;font-variant-numeric:tabular-nums}
+.fn-r .cv{text-align:right;font-family:var(--mono);font-size:11px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.fn-r.unit{background:var(--card-2)}
+.fn-r.unit .lb{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+
+/* pricing */
+.pr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--rule);
+  border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+@media (max-width:760px){.pr{grid-template-columns:1fr}}
+.pr > div{background:var(--card);padding:var(--s5)}
+.pr .pop{background:var(--deep);color:var(--on-deep)}
+.pr .nm{font-family:var(--serif);font-size:20px}
+.pr .amt{font-family:var(--serif);font-size:clamp(26px,3.6vw,34px);margin-top:var(--s3);letter-spacing:-.02em}
+.pr .amt span{font-size:14px;color:var(--ink-3);font-family:var(--sans)}
+.pr .pop .amt span{color:var(--on-deep-3)}
+.pr .dsc{font-size:13.5px;color:var(--ink-2);margin-top:var(--s3);line-height:1.5}
+.pr .pop .dsc{color:var(--on-deep-2)}
+.pr .tagline{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--deep-teal);margin-bottom:var(--s3)}
+
+.util-row{display:flex;flex-wrap:wrap;gap:var(--s4);align-items:center;justify-content:space-between;margin-bottom:var(--s5)}
+.hidden{display:none !important}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* ============================================================
+   COLOUR & DEPTH LAYER  —  dark-first
+   Ground and blooms are taken from the ReconOS deck: navy
+   #0A1D3B, raised navy #162850, emerald #00B77E. The five
+   identity hues light the field from behind. Light theme is
+   the opt-in, via the toggle.
+   ============================================================ */
+:root{
+  color-scheme:dark;
+  --h-indigo:#6B82F0; --h-teal:#00AE78; --h-brass:#B58A20; --h-rose:#E05A88; --h-violet:#A276E2;
+  --paper:#0A1D3B; --paper-2:#06122A;
+  --card:rgba(22,40,80,.50); --card-2:rgba(29,50,95,.74); --card-solid:#122544;
+  --ink:#EEF3F8; --ink-2:#A7B6CC; --ink-3:#7C8DA9; --ink-4:#5D6D89;
+  --rule:rgba(186,209,240,.13); --rule-2:rgba(186,209,240,.25);
+  --accent:var(--h-indigo);
+  --soft-base:#0A1D3B;
+  --accent-soft:color-mix(in srgb, var(--accent) 20%, var(--soft-base));
+  --accent-ink:var(--accent);
+  --var:#F2795C; --var-soft:rgba(242,121,92,.15);
+  --teal:var(--h-teal); --brass:var(--h-brass);
+  --deep:#06122A; --deep-2:#16284F;
+  --on-deep:#EEF3F8; --on-deep-2:#A7B6CC; --on-deep-3:#7C8DA9;
+  --deep-accent:var(--h-indigo); --deep-var:#F2795C; --deep-teal:#00C88A; --deep-brass:var(--h-brass);
+  --focus:#8FA6FF;
+  --glow-navy:rgba(22,40,80,.85);
+  --glow-1:rgba(107,130,240,.30); --glow-2:rgba(0,183,126,.22);
+  --glow-3:rgba(181,138,32,.14); --glow-4:rgba(162,118,226,.26); --glow-5:rgba(224,90,136,.16);
+  --deep-grad:linear-gradient(148deg,#16284F 0%,#0C1F3F 48%,#06122A 100%);
+  --deep-grad-2:linear-gradient(140deg,#1B3160 0%,#0D2145 52%,#050F25 100%);
+  --grain:.075;
+  --btn-grad:linear-gradient(120deg,#EDF2F8 0%,#BFCEE4 100%); --btn-fg:#0A1D3B;
+  --shadow:0 1px 2px rgba(0,0,0,.40), 0 22px 52px -28px rgba(0,0,0,.92);
+}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --h-indigo:#2B4ACB; --h-teal:#00897A; --h-brass:#A8760A; --h-rose:#C2306B; --h-violet:#8A3FBF;
+  --paper:#EEF2F7; --paper-2:#DFE6F0;
+  --card:rgba(255,255,255,.72); --card-2:rgba(255,255,255,.92); --card-solid:#F6F9FC;
+  --ink:#0C1B33; --ink-2:#42546F; --ink-3:#677994; --ink-4:#94A4BD;
+  --rule:rgba(10,29,59,.12); --rule-2:rgba(10,29,59,.22);
+  --soft-base:#FFFFFF;
+  --var:#C4442C; --var-soft:#F7E3DF;
+  --deep:#0A1D3B; --deep-2:#16284F;
+  --deep-teal:#00C88A;
+  --focus:#2B4ACB;
+  --glow-navy:rgba(43,74,203,.07);
+  --glow-1:rgba(43,74,203,.18); --glow-2:rgba(0,137,122,.14);
+  --glow-3:rgba(168,118,10,.11); --glow-4:rgba(138,63,191,.14); --glow-5:rgba(194,48,107,.10);
+  --grain:.05;
+  --btn-grad:linear-gradient(120deg,#0A1D3B 0%,#1D3563 100%); --btn-fg:#FFFFFF;
+  --shadow:0 1px 2px rgba(10,29,59,.05), 0 18px 44px -26px rgba(10,29,59,.32);
+}
+
+/* ---- the ambient field ---- */
+body{background:var(--paper);position:relative;isolation:isolate}
+body::before{
+  content:"";position:fixed;inset:-14%;z-index:-2;pointer-events:none;
+  background:
+    radial-gradient(38% 30% at 84% -2%, var(--glow-navy), transparent 64%),
+    radial-gradient(34% 28% at 4% 74%, var(--glow-navy), transparent 64%),
+    radial-gradient(46% 38% at 14% 4%,  var(--glow-1), transparent 68%),
+    radial-gradient(42% 34% at 88% 12%, var(--glow-2), transparent 66%),
+    radial-gradient(50% 40% at 62% 44%, var(--glow-4), transparent 70%),
+    radial-gradient(44% 36% at 10% 68%, var(--glow-3), transparent 68%),
+    radial-gradient(46% 38% at 92% 88%, var(--glow-5), transparent 68%);
+  animation:field 48s ease-in-out infinite alternate;
+}
+@keyframes field{
+  from{transform:translate3d(0,0,0) scale(1)}
+  to{transform:translate3d(-2.2%,1.6%,0) scale(1.07)}
+}
+body::after{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:var(--grain);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---- surfaces get a light-direction gradient + depth ---- */
+.panel,.edu-card,.fig,.evidence,.tax-detail,.dt-scroll,.mx-scroll,
+.wf,.sim,.jrn,.work,.themes,.otc,.pr,.ng,.vs,.steps,.fn,.tax-grid,.gws{
+  background-image:linear-gradient(158deg,var(--card-2) 0%,var(--card) 58%);
+  box-shadow:var(--shadow);
+  backdrop-filter:blur(10px) saturate(1.15);
+}
+.work,.themes,.otc,.pr,.ng,.vs,.steps,.fn,.tax-grid,.gws{background-color:var(--rule)}
+.wk,.theme,.otc > div,.pr > div,.ng div,.vs > div,.step,.fn-r,.tax-b,.gw{
+  background-image:linear-gradient(158deg,var(--card-2) 0%,var(--card) 62%);backdrop-filter:none;box-shadow:none}
+.panel:hover,.edu-card:hover{border-color:var(--rule-2)}
+
+/* sticky ledger column must stay opaque */
+table.mx th.cap,table.mx td.cap{background:var(--card-solid);background-image:none}
+table.mx thead th{background:var(--card-solid);background-image:none;backdrop-filter:blur(6px)}
+table.mx tbody tr:hover td,table.mx tbody tr:hover td.cap{background-color:var(--accent-soft)}
+
+/* ---- deep panels become gradients ---- */
+.contact,.panel.dark,.wf-out,.sim-out,.mdec .cho,.pr .pop,.theme[aria-selected="true"]{
+  background-image:var(--deep-grad);background-color:#0F1520}
+.contact{background-image:var(--deep-grad-2);position:relative;overflow:hidden;box-shadow:var(--shadow)}
+.contact::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:
+    radial-gradient(58% 70% at 88% 8%, rgba(107,130,240,.28), transparent 66%),
+    radial-gradient(50% 60% at 6% 96%, rgba(0,169,150,.20), transparent 68%),
+    radial-gradient(40% 50% at 62% 100%, rgba(162,118,226,.16), transparent 70%);
+}
+.contact > *{position:relative;z-index:1}
+.panel.dark,.mdec .cho,.pr .pop{border-color:rgba(255,255,255,.10)}
+
+/* ---- gradient rules & accents ---- */
+.legend{border-image:linear-gradient(90deg,var(--h-indigo),var(--h-teal) 30%,var(--h-violet) 62%,var(--h-brass) 84%,transparent) 1;
+  border-top-width:1px;border-bottom-width:1px;border-style:solid;border-left:0;border-right:0}
+.wf,.sim,.jrn{position:relative}
+.wf::before,.sim::before,.jrn::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:2px;border-radius:3px 3px 0 0;
+  background:linear-gradient(90deg,var(--accent),var(--h-teal) 45%,var(--h-violet) 78%,transparent)}
+
+/* ---- gradient display type ---- */
+.hero h1 em{color:var(--accent)}
+@supports (-webkit-background-clip:text) or (background-clip:text){
+  .hero h1 em{
+    background:linear-gradient(96deg,var(--h-indigo) 4%,var(--h-violet) 48%,var(--h-rose) 92%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    -webkit-text-fill-color:transparent;padding-right:.06em}
+}
+.proof .v,.stat .v,.wk-stat .v,.otc .v{
+  background:linear-gradient(168deg,var(--ink) 8%,var(--accent) 130%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.panel.dark .stat .v{background:linear-gradient(168deg,#fff 10%,var(--h-teal) 135%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+
+/* proof tiles carry three of the five hues */
+.proof:nth-child(1){--accent:var(--h-indigo)}
+.proof:nth-child(2){--accent:var(--h-teal);--accent-soft:color-mix(in srgb, var(--h-teal) 20%, var(--soft-base))}
+.proof:nth-child(3){--accent:var(--h-brass);--accent-soft:color-mix(in srgb, var(--h-brass) 20%, var(--soft-base))}
+
+/* theme cards each own a hue */
+.theme:nth-child(1){--accent:var(--h-indigo)}
+.theme:nth-child(2){--accent:var(--h-teal)}
+.theme:nth-child(3){--accent:var(--h-brass)}
+.theme:nth-child(4){--accent:var(--h-violet)}
+.theme{border-top:2px solid transparent;background-clip:padding-box}
+.theme .t-n{color:var(--accent);font-weight:500}
+.theme[aria-selected="true"]{border-top-color:var(--accent)}
+.theme[aria-selected="true"] .t-n{color:#fff}
+
+/* ---- per-case-study identity ---- */
+[data-case="reconos"]{--accent:var(--h-indigo)}
+[data-case="routeiq"]{--accent:var(--h-teal)}
+[data-case="mid-procurement"]{--accent:var(--h-brass)}
+[data-case="found-it"]{--accent:var(--h-teal)}
+[data-case="prolectro"]{--accent:var(--h-violet)}
+[data-case="cogent-launch"]{--accent:var(--h-rose)}
+[data-case]{--accent-soft:color-mix(in srgb, var(--accent) 20%, var(--soft-base));--accent-ink:var(--accent)}
+.wk{border-left:2px solid transparent;transition:border-color .2s,background .2s}
+.wk:hover{border-left-color:var(--accent)}
+.wk .idx{color:var(--accent)}
+.cs-hero{position:relative}
+.cs-hero::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;
+  background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 30%,transparent) 55%,transparent)}
+
+/* ---- portrait frame ---- */
+.portrait{border-color:var(--rule-2);box-shadow:var(--shadow);
+  background-image:linear-gradient(158deg,var(--card-2),var(--card))}
+.portrait::after{content:"";position:absolute;inset:0;pointer-events:none;mix-blend-mode:screen;
+  background:linear-gradient(196deg,transparent 54%,rgba(107,130,240,.26) 100%)}
+:root[data-theme="light"] .portrait::after{mix-blend-mode:multiply;
+  background:linear-gradient(196deg,transparent 52%,rgba(43,74,203,.24) 100%)}
+
+/* ---- section rail markers pick up colour ---- */
+.sec-head .rail,.act-head .rail{position:relative;padding-left:15px}
+.sec-head .rail::before,.act-head .rail::before{content:"";position:absolute;left:0;top:.66em;
+  width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.sec-head .rail::before{top:calc(9px + .66em)}
+#throughline{--accent:var(--h-indigo)}
+#money{--accent:var(--h-teal)}
+#work{--accent:var(--h-violet)}
+#journey{--accent:var(--h-brass)}
+#capabilities{--accent:var(--h-rose)}
+#experience{--accent:var(--h-indigo)}
+#otc{--accent:var(--h-teal)}
+#throughline,#money,#work,#journey,#capabilities,#experience,#otc{
+  --accent-soft:color-mix(in srgb, var(--accent) 20%, var(--soft-base))}
+
+/* ---- nav sits above the field ---- */
+.nav{background:color-mix(in srgb,var(--paper) 72%,transparent);
+  backdrop-filter:blur(16px) saturate(1.4);
+  border-bottom:1px solid var(--rule)}
+.brand .dot{background:linear-gradient(120deg,var(--h-indigo),var(--h-violet));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+
+/* ---- buttons pick up the gradient ---- */
+.btn-p{background-image:var(--btn-grad);background-color:transparent;border-color:transparent;color:var(--btn-fg)}
+.btn-p:hover{background-image:linear-gradient(120deg,var(--accent) 0%,var(--h-violet) 130%);color:#fff}
+.chip[aria-pressed="true"],.tg button[aria-pressed="true"]{
+  background-image:var(--btn-grad);background-color:transparent;color:var(--btn-fg);border-color:transparent}
+.tax-b[aria-pressed="true"]{background-image:linear-gradient(130deg,var(--accent),color-mix(in srgb,var(--accent) 62%,var(--h-violet)))}
+.mk{background-color:var(--accent-soft);color:var(--accent-ink)}
+.mk:hover{background-image:linear-gradient(130deg,var(--accent),color-mix(in srgb,var(--accent) 55%,var(--h-violet)));color:#fff}
+
+/* ---- bars and tracks ---- */
+.fn-r .bar i{background-image:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 50%,var(--h-violet)))}
+.wf-track,.fn-r .bar{background-color:color-mix(in srgb,var(--ink) 9%,transparent)}
+.gw.win{background-image:linear-gradient(158deg,var(--accent-soft),var(--card-2))}
+
+/* ---- the "silent break" state turns the whole tile ---- */
+.wf-out .hl-var{color:#FF8A6E}
+.wf-out .hl-ok,.sim-out .hl-ok{color:#3FD9C0}
+.sim-out .hl-var{color:#FF8A6E}
+
+/* ---- live-build badge on work cards ---- */
+.wk .badge{display:inline-flex;align-items:center;gap:6px;margin-left:var(--s3);vertical-align:1px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--accent);
+  border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);padding:2px 7px;border-radius:2px}
+.wk .badge::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--accent);
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 25%,transparent)}
+
+/* ---- embedded screenshots of live builds ---- */
+.shots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s5)}
+@media (max-width:760px){.shots{grid-template-columns:1fr}}
+.shot{margin:0;border:1px solid var(--rule);border-radius:3px;background:var(--card);overflow:hidden;box-shadow:var(--shadow)}
+.shot img{width:100%;height:auto;background:#fff}
+.shot figcaption{padding:var(--s3) var(--s4);border-top:1px solid var(--rule);font-size:13px;color:var(--ink-2);line-height:1.45}
+.shot figcaption b{display:block;font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.11em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:3px}
+
+/* ---- placeholders that must be filled before deploying ---- */
+.todo{border:1.5px dashed var(--var);border-radius:3px;background:var(--var-soft);padding:var(--s5);
+  font-size:14px;line-height:1.5;color:var(--ink-2)}
+.todo b{display:block;font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--var);margin-bottom:6px}
+.shot.todo{display:grid;place-items:center;min-height:220px;text-align:center;box-shadow:none}
+.todo-i{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--var);background:var(--var-soft);
+  border:1px dashed var(--var);padding:1px 6px;border-radius:2px;word-break:break-all}
+
+/* ---- per-request clock timeline (schematic) ---- */
+.clk{border:1px solid var(--rule);border-radius:3px;background:var(--card);padding:var(--s5);box-shadow:var(--shadow)}
+.clk-r{display:grid;grid-template-columns:170px minmax(0,1fr);gap:var(--s4);align-items:center;padding-block:7px}
+@media (max-width:620px){.clk-r{grid-template-columns:1fr;gap:4px}}
+.clk-r .lb{font-size:13.5px;color:var(--ink);line-height:1.3}
+.clk-r .lb small{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--ink-3)}
+.clk-t{position:relative;height:18px;background:color-mix(in srgb,var(--ink) 7%,transparent);border-radius:2px}
+.clk-t i{position:absolute;top:0;bottom:0;border-radius:2px}
+.clk-t i.hands{background:var(--accent)}
+.clk-t i.wait{background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--accent) 55%,transparent) 0 3px,transparent 3px 6px);
+  border:1px solid color-mix(in srgb,var(--accent) 60%,transparent)}
+.clk-t i.bank{background:var(--h-violet)}
+.clk-t i.bd{background:var(--h-teal)}
+.clk-t i.ob{background:var(--h-rose)}
+.clk-r.total{border-top:1px solid var(--rule-2);margin-top:var(--s2);padding-top:var(--s3)}
+.clk-r.total .clk-t i{background:var(--ink-3)}
+
+/* standalone page: no router, so the view is simply visible */
+html{scroll-behavior:smooth}
+.csview{display:block}
+.site-foot{border-top:1px solid var(--rule);padding:var(--s7) 0;margin-top:var(--s6)}
+.site-foot .wrap{display:flex;flex-wrap:wrap;gap:var(--s5);justify-content:space-between;align-items:center}
+.site-foot p{font-size:14px;color:var(--ink-3)}
+.site-foot a{color:var(--accent);text-decoration:none}
+</style></head>
+<body>
+<main class="csview">
+  <header class="cs-hero wrap">
+    <p style="margin-bottom:var(--s5)"><a class="backlink" href="/">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M19 12H5M11 18l-6-6 6-6"/></svg> Back to the dashboard</a></p>
+    <p class="cs-kicker">MID Procurement Automation</p>
+    <h1>Product requirements</h1>
+    <p class="lede">A payment aggregator cannot put a merchant live until an acquiring bank issues a MID. Getting that MID is a manual, multi-party chase across six or seven banks, tracked in a spreadsheet, and nobody in the business can say with confidence where the time goes.</p>
+    <div class="cs-meta">
+      <div><p class="k">Version</p><p class="v">v1.0 · October 2026</p></div>
+      <div><p class="k">Author</p><p class="v">Navya Juneja, written from two years running this process at a payment aggregator</p></div>
+      <div><p class="k">Status</p><p class="v">Built and tested end to end against a seeded synthetic dataset. 283 tests</p></div>
+      <div><p class="k">Source</p><p class="v"><a href="https://github.com/navyajuneja1000-droid/MID-Procurement-Workflow/blob/HEAD/PRD.md" target="_blank" rel="noopener">This document in the repo ↗</a></p></div>
+    </div>
+    <nav class="prd-toc" aria-label="Contents" style="margin-top:var(--s7)">
+      <a href="#prd-1"><span class="n">01</span>In one page</a>
+      <a href="#prd-2"><span class="n">02</span>The problem</a>
+      <a href="#prd-3"><span class="n">03</span>Who this is for</a>
+      <a href="#prd-4"><span class="n">04</span>Goals and non-goals</a>
+      <a href="#prd-5"><span class="n">05</span>The rules that are easy to get wrong</a>
+      <a href="#prd-6"><span class="n">06</span>What the product does</a>
+      <a href="#prd-7"><span class="n">07</span>How success is measured</a>
+      <a href="#prd-8"><span class="n">08</span>Requirements</a>
+      <a href="#prd-9"><span class="n">09</span>What was cut</a>
+      <a href="#prd-10"><span class="n">10</span>Open questions</a>
+      <a href="#prd-11"><span class="n">11</span>Status, and what is not claimed</a>
+      <a href="#prd-12"><span class="n">12</span>Reading the code</a>
+    </nav>
+  </header>
+
+  <section class="act wrap" id="prd-1">
+    <div class="act-head"><p class="rail">01 — In one page</p>
+      <div><h2>Four things the spreadsheet cannot do.</h2></div></div>
+    <div class="act-body"><p class="rail">Summary</p>
+      <div>
+        <div class="prose">
+          <p><b>Reports turnaround honestly.</b> Every figure is derived from an immutable event log rather than typed into a cell, and the clocks are allowed to overlap because in reality they do.</p>
+          <p><b>Finds the gaps on arrival</b> instead of several ops days later, and bounces them once, to the team that owns them, naming what each gap is holding up.</p>
+          <p><b>Builds each bank's submission file</b> from one resolved record, checks it for the errors a person cannot see by eye, and drafts the covering email.</p>
+          <p><b>Chases what is actually late</b>, on the round the bank is holding now, and stops chasing when a third email would do more harm than good.</p>
+          <p>The scope deliberately stops at the external boundary. Every outbound email is drafted and a person sends it.</p>
+        </div>
+        <p class="pull">Built and tested end to end against a seeded synthetic dataset of 360 merchants and 1,376 requests. No real merchant, bank, rate card or template appears anywhere in it, and it has never run against a live pipeline.<cite>Status — section 11 is explicit about what that means</cite></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="act wrap" id="prd-2">
+    <div class="act-head"><p class="rail">02 — The problem</p>
+      <div><h2>Every merchant waits on a bank. Nobody could say for how long, or why.</h2>
+        <p class="dek">What has to happen before a merchant can take a card payment, and the four ways it fails.</p></div></div>
+    <div class="act-body"><p class="rail">Context</p>
+      <div>
+        <div class="prose">
+          <p>A merchant signs with the aggregator. Before a single transaction can be processed, each acquiring bank the merchant will route through has to issue a MID against that merchant's specific line of business. One merchant commonly needs three or four MIDs from a panel of six or seven acquirers, raised in parallel, each with its own forms, its own category rules and its own idea of how long a reply should take.</p>
+          <p>Every one of those applications passes between four parties: BD, who owns the merchant relationship and the documents; onboarding, who owns the ticket; operations, who raises it and chases it; and the acquirer, who decides.</p>
+        </div>
+        <div class="dt-scroll" style="margin-top:var(--s6)">
+          <table class="dt">
+            <thead><tr><th>The scale this runs at</th><th class="n">Today</th></tr></thead>
+            <tbody>
+              <tr><td>Requests a month</td><td class="n">~1,000</td></tr>
+              <tr><td>People handling them</td><td class="n">3</td></tr>
+              <tr><td>Acquirers on the panel</td><td class="n">6 to 7</td></tr>
+              <tr><td>Acquirers per merchant</td><td class="n">3 to 4, in parallel</td></tr>
+              <tr><td>Requests that bounce back for missing or wrong data</td><td class="n">30 to 40%</td></tr>
+              <tr><td>Where it is tracked</td><td class="n">one spreadsheet, by hand</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prose" style="margin-top:var(--s6)">
+          <p><b>Turnaround is unknowable.</b> Leadership asks how long procurement takes. The answer is produced by hand each week by reading a sheet of dates. It cannot be broken down by party without someone rebuilding it, it cannot be opened up when a specific merchant took 22 days, and because the sheet records a status rather than a history, a cell that gets overwritten takes the evidence with it.</p>
+          <p><b>Gaps are found at the worst possible moment.</b> A missing signatory PAN surfaces while someone is filling in a bank's template, which is several ops days after the ticket arrived. The ticket then bounces, and those days are spent twice: once before the bounce and once after it comes back.</p>
+          <p><b>Each bank is a different animal, and the differences are undocumented.</b> Six acquirers means six submission templates, six sets of category rules, six definitions of a reasonable reply time, and six reply formats to read. All of that knowledge lives in the heads of three people.</p>
+          <p><b>Chasing is either forgotten or indiscriminate.</b> There is no list of what is genuinely late, so follow-up is either skipped or done by sending everyone a reminder, which trains banks to ignore them.</p>
+        </div>
+        <p class="pull">The tracker holds one row per merchant. The actual unit of work is one merchant, one MCC, one acquirer. The moment a merchant has two use cases, a one-row-per-merchant sheet has to either lose one of them or describe both in a cell, and every report built on top inherits that.<cite>Why the spreadsheet cannot be fixed by being a better spreadsheet</cite></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="act wrap" id="prd-3">
+    <div class="act-head"><p class="rail">03 — Who this is for</p>
+      <div><h2>Five readers, one primary user.</h2></div></div>
+    <div class="act-body"><p class="rail">Users</p>
+      <div>
+        <div class="dt-scroll">
+          <table class="dt">
+            <thead><tr><th>User</th><th>What they need</th><th>What they get today</th></tr></thead>
+            <tbody>
+              <tr class="hi"><td><b>Ops analyst</b><br>3 people, primary user</td><td>What can go out this morning, what is blocked and on whom, what is late</td><td>A sheet they maintain by hand and a memory of which bank wants what</td></tr>
+              <tr><td><b>Ops lead</b></td><td>Where time goes, which acquirer is slow, whether the backlog is growing</td><td>A weekly figure rebuilt by hand, with no way to open it up</td></tr>
+              <tr><td><b>BD</b></td><td>What is missing on their merchant, once, clearly, with the consequence</td><td>Several separate messages, often repeating the same gap</td></tr>
+              <tr><td><b>Onboarding</b></td><td>The same, for the fields they own</td><td>The same problem</td></tr>
+              <tr><td><b>Leadership</b></td><td>One honest turnaround number per party</td><td>A number they cannot interrogate</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prose" style="margin-top:var(--s5)">
+          <p>The ops analyst is the primary user and every design call resolves in their favour. A feature that produces a better report but costs the analyst a keystroke a day is the wrong trade.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="act wrap" id="prd-4">
+    <div class="act-head"><p class="rail">04 — Goals and non-goals</p>
+      <div><h2>Five goals, and five things it deliberately will not do.</h2></div></div>
+    <div class="act-body"><p class="rail">Goals</p>
+      <div>
+        <div class="prose">
+          <p><b>Every turnaround figure derived, never stored.</b> Any number can be opened up to the events that produced it.</p>
+          <p><b>Find and route every gap on arrival</b>, in one consolidated bounce per party.</p>
+          <p><b>Generate each bank's file</b> from a single resolved record, with the errors a human cannot see caught before it goes.</p>
+          <p><b>Hold the per-acquirer knowledge as data</b>, editable by the team that learns it, not as code or as memory.</p>
+          <p><b>Chase on evidence</b>, and be able to say whether the chasing works.</p>
+        </div>
+        <div class="ng" style="margin-top:var(--s6)">
+          <div><p class="t">Send anything</p><p class="w">One checkpoint at the external boundary. The cost of a wrong file reaching a bank is not a retry, it is a conversation with a relationship manager and a batch that misses its slot.</p></div>
+          <div><p class="t">Decide eligibility on its own</p><p class="w">A bank's restricted-category list is a fact about today. The system surfaces it and a person decides.</p></div>
+          <div><p class="t">Replace the acquirer's systems</p><p class="w">No core banking integration, and no attempt to predict a bank's decision.</p></div>
+          <div><p class="t">Monitor merchant sites after go-live</p><p class="w">Cut deliberately. It is a different product, and this project has no honest way to test it.</p></div>
+          <div><p class="t">Match replies without confidence controls</p><p class="w">A wrongly matched bank reply writes a wrong event into the clock, and every figure downstream inherits it with nothing flagged.</p></div>
+        </div>
+        <p class="cite">Each non-goal is a decision, not an omission.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="act wrap" id="prd-5">
+    <div class="act-head"><p class="rail">05 — The rules that are easy to get wrong</p>
+      <div><h2>The part that cannot be derived from first principles by someone who has not run the process.</h2>
+        <p class="dek">Each rule below is encoded as an executable test, so a later change cannot quietly break it.</p></div></div>
+    <div class="act-body"><p class="rail">Domain rules</p>
+      <div>
+        <div class="prose">
+          <p><b>5.1 The unit of work is merchant + MCC + acquirer.</b> Not merchant + acquirer. Bank replies are therefore matched on legal name <i>plus</i> MCC, because a merchant with two live applications at one bank has two different answers coming.</p>
+          <p><b>5.2 Clocks overlap, in two specific places.</b> Ops runs alongside the acquirer, because getting the MID is ops' job and they do not put it down while the bank has it. Onboarding runs alongside BD, because onboarding owns the ticket until it comes back clean. The consequence: per-party days sum to more than elapsed time, so a share-of-delay pie chart is arithmetically wrong no matter how good it looks. The honest visual is a timeline per request with the overlaps drawn.</p>
+          <p><b>5.3 Ops is measured per episode, not merged.</b> A request ops picks up three times is three entries, and that count is itself the rework measure. Raising to a bank splits an episode into solo and overlap phases but is not a new pickup.</p>
+          <p><b>5.4 Ops time splits into solo and overlap.</b> Solo is the efficiency figure. Overlap is time ops is accountable for but does not control. Reporting one without the other misleads in opposite directions.</p>
+          <p><b>5.5 A 2pm cut-off, on the acquirer clock only.</b> A batch sent after 2pm starts the bank's clock the next working day. Internal clocks start immediately.</p>
+          <p><b>5.6 Working days, with per-acquirer holiday calendars.</b> Most acquirers share one; one or two differ.</p>
+          <p><b>5.7 Same-day handoff counts as one day, not zero.</b> A party that handled and passed on a request consumed a day of someone's attention.</p>
+          <p><b>5.8 Deprioritisation stops every clock</b>, and those requests leave the turnaround averages but are counted separately with how long they sat first. That is ops effort which produced nothing, and hiding it flatters the team.</p>
+          <p><b>5.9 Approval and MID delivery are different events on different email threads.</b> The gap between them is invisible in the tracker and sits inside procurement turnaround. Measured here as a separate acquirer phase.</p>
+          <p><b>5.10 Acquirer SLA is judged per response round, not on total held time.</b> A bank that answers in 4 days, asks for a document, then answers in 4 more has met a 5-day SLA twice. Charging it the 8-day sum bills the bank for our own turnaround in between, and a bank that receives a complaint it can disprove stops reading the next one. Total held time is still reported, separately, as a measure of our own data quality: more than one round means the application could not be decided in a single pass.</p>
+          <p><b>5.11 BAU and bulk migration are reported separately.</b> A migration backlog otherwise destroys the BAU averages and hides a real capacity problem behind a one-off event.</p>
+          <p><b>5.12 The merchant is not a party.</b> Time waiting on a merchant is charged to BD, as it is today. Whether that is fair to BD is an open question in section 10.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="act wrap" id="prd-6">
+    <div class="act-head"><p class="rail">06 — What the product does</p>
+      <div><h2>Six capabilities, each with the decision worth defending.</h2>
+        <p class="dek">Figures in italics are from the current run of the seeded synthetic dataset.</p></div></div>
+    <div class="act-body"><p class="rail">6.1 Intake</p>
+      <div>
+        <div class="prose">
+          <p>Checks every application the moment the ticket lands, at three levels: <b>present</b>, is the field there; <b>well formed</b>, does the PAN match the PAN format and does the GSTIN pass its own checksum; and <b>consistent with the rest of the record</b>.</p>
+          <p>A GSTIN carries the entity's PAN at characters 3 to 12 and its issuing state in the first two, so a record can pass every field-level check and still describe two different companies. That contradiction is what an underwriter spots, and finding it that way costs a full acquirer cycle.</p>
+          <p>Readiness is decided <b>per acquirer</b>, because acquirers ask for different fields. A missing signatory PAN blocks the three that want it and leaves the fourth untouched, which is what makes partial raising possible.</p>
+          <p>Bounces are consolidated <b>one per party, not per acquirer</b>, and the comment names the consequence. "Company GST: not provided (blocks ALDRIDGE, NORTHWAY_CYBS, NORTHWAY_FSS)" tells the receiving team how urgent it is in a way that "missing GST" does not.</p>
+          <p><i>Current run, 390 merchant use cases: 70.3% clean for every acquirer they were raised to, 12.6% ready for some and blocked for others, 17.2% blocked everywhere.</i></p>
+        </div>
+      </div>
+    </div>
+    <div class="act-body" style="margin-top:var(--s7)"><p class="rail">6.2 Bank files</p>
+      <div>
+        <div class="prose">
+          <p>One submission template per acquirer, described as configuration rather than code, because banks change these templates with no notice and no version number. The cost of absorbing a change decides whether the file is generated or typed.</p>
+          <p><b>Every column declares who owns it</b>: filled from the record, derived, constant, ops input, or owned by sales or finance. Most of the largest template is not ops', and that is the honest answer to how much of it can be automated. The pre-flight then reports "sales owes a settlement cycle on four merchants", which is a message that can be sent. "17 empty cells" is not.</p>
+          <p><b>Nothing is invented to fill a cell.</b> A plausible value typed in by ops is a commercial term nobody agreed, and it goes live.</p>
+          <p><b>Sheet grain is declared.</b> The identity tabs are one row per merchant, the deal tab one row per application. Writing a two-use-case merchant twice on the identity tab asks the bank to open two accounts for one merchant.</p>
+          <p><b>Identifier columns are written as text.</b> A pincode starting with zero and a twelve-digit account number are both numbers to a spreadsheet, and stored as numbers the bank reads something other than what was reviewed.</p>
+          <p><b>Rows are held back, not the file.</b> Four merchants waiting on a missing value do not keep the other fifty out of the morning batch.</p>
+          <p><i>Current run: 408 requests waiting, 324 go out today, 59 held on documents, 13 blocked by house policy, 12 waiting on an ops decision about a restriction.</i></p>
+        </div>
+      </div>
+    </div>
+    <div class="act-body" style="margin-top:var(--s7)"><p class="rail">6.3 Reply parser</p>
+      <div>
+        <div class="prose">
+          <p>Two streams, status replies and MID deliveries, read from each bank's own messy format: different column names, free-text status wording, rejection reasons written as sentences, legal names that drift from the record, and replies that cover only part of a batch.</p>
+          <p><b>Extraction is driven by the shape of the email, not the acquirer.</b> Going by acquirer means a bank that changes its layout silently yields zero rows and nobody notices for a week.</p>
+          <p><b>Negations are checked first.</b> "Not Approved" contains "Approved", and a substring test records a declined merchant as won.</p>
+          <p><b>Ambiguity fails closed.</b> Two candidates within 0.04 of each other go to a person.</p>
+          <p><i>Current run: 1,250 rows from 626 emails, 99.0% applied automatically at 100% precision, 1.0% held for review.</i></p>
+        </div>
+      </div>
+    </div>
+    <div class="act-body" style="margin-top:var(--s7)"><p class="rail">6.4 Restrictions</p>
+      <div>
+        <div class="prose">
+          <p>Each acquirer keeps its own restricted-category list. They do not agree with each other and they are not even in the same format: coded lists, lists split by payment instrument, a separate narrower ban for one product, and a page of prose with no codes at all. <b>A merchant on one category can be eligible at one bank, conditional at a second and refused at a third</b>, so this cannot be answered once for the merchant.</p>
+          <p>Every entry carries its source, and confidence follows the source rather than being typed in by whoever added it: a published circular is 1.0, a written confirmation 0.95, a rejection actually received 0.9, something said on a call 0.6. Nothing is ever deleted; entries are retired with a date and a reason.</p>
+          <p>Overrides are recorded, which is what makes the list self-correcting. An override the bank refuses on the category proves the entry right. One the bank approves proves it stale. One refused for an unrelated reason proves nothing either way and is counted as neither.</p>
+          <p><i>Current registry: 89 live entries across six acquirers, 3 blocking (all house policy), 33 warnings, 53 notes.</i></p>
+        </div>
+        <p class="pull">Only our own policy blocks. A category the business will not onboard is a rule. A category one bank currently refuses is a fact about today, and facts about today go stale without telling anyone. A hard block fails invisibly, because the system quietly stops raising to a bank that would now accept, and there is no rejection to notice.<cite>The design call this section exists for</cite></p>
+      </div>
+    </div>
+    <div class="act-body" style="margin-top:var(--s7)"><p class="rail">6.5 The chaser</p>
+      <div>
+        <div class="prose">
+          <p>Finds what each acquirer is holding past the agreed response time, ranks it, drafts one email per acquirer, and stops.</p>
+          <p><b>Nothing is chased that is waiting on us.</b> <i>572 of the currently open requests are.</i> A request late because a bank asked for a document nobody sent is not theirs to answer for, and chasing it spends credibility needed for the ones that genuinely are late.</p>
+          <p><b>Lateness is the round they hold now</b>, following rule 5.10.</p>
+          <p><b>Ranked by days over, weighted by priority tier</b>, steeply enough that a P0 one day late outranks a P4 six days late, shallowly enough that a P4 twelve days over still outranks that P0, so the queue does not starve its own tail.</p>
+          <p><b>The ladder ends.</b> One nudge, one firmer follow-up, then it stops emailing and writes a note for a person to raise on the relationship call.</p>
+          <p><i>Current run: 119 applications with an acquirer, 36 past the agreed time.</i></p>
+        </div>
+      </div>
+    </div>
+    <div class="act-body" style="margin-top:var(--s7)"><p class="rail">6.6 Dashboard</p>
+      <div>
+        <div class="prose">
+          <p>One self-contained page. Blended ops turnaround as the headline, hands-on time only, with the unraised queue excluded and reported separately underneath, because an average that includes an open queue moves with backlog size rather than with how the team is performing.</p>
+          <p>Then the acquirer scorecard sorted by bank days so the laggard surfaces on its own, bounce and rejection reasons built from the reason codes, an exception list ranked past-SLA first, and a per-request timeline with the overlapping clocks drawn and elapsed days stated against summed party days, so the gap between those two numbers is explicit rather than hidden.</p>
+        </div>
+        <p style="margin-top:var(--s5)"><a class="btn btn-s" href="https://workflowmidprocurement.vercel.app/" target="_blank" rel="noopener">Open the live build ↗</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="act wrap" id="prd-7">
+    <div class="act-head"><p class="rail">07 — How success is measured</p>
+      <div><h2>Five measures, one number deliberately not optimised, and one question that cannot be answered yet.</h2></div></div>
+    <div class="act-body"><p class="rail">Measures</p>
+      <div>
+        <div class="dt-scroll">
+          <table class="dt">
+            <thead><tr><th>Measure</th><th>Why this one</th><th>Baseline today</th></tr></thead>
+            <tbody>
+              <tr><td>Ops solo days per request</td><td>Hands-on time, the only part the team controls</td><td>2.6 days</td></tr>
+              <tr><td>Bounces per request</td><td>Each one is a round trip that could have been found on arrival</td><td>27% of requests</td></tr>
+              <tr><td>Found on arrival vs at template time</td><td>The gap this closes</td><td>not measurable in the old tracker</td></tr>
+              <tr><td>Unraised queue age</td><td>The capacity signal the old report could not show</td><td>median 22 days, oldest 50</td></tr>
+              <tr><td>Acquirer breach rate, per round</td><td>Holds banks to what they agreed, defensibly</td><td>21% of 792 answered rounds</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prose" style="margin-top:var(--s6)">
+          <p><b>Not match rate.</b> A parser that matches more rows looks better and is worse: a wrongly matched reply writes a wrong event into the clock and every figure downstream inherits it silently. The parser is measured on precision of what it applied, and the review queue is treated as a feature rather than a failure.</p>
+        </div>
+        <div class="prose" style="margin-top:var(--s6)">
+          <p><b>Whether chasing actually speeds banks up cannot currently be answered</b>, and the report says so in those words rather than printing a number.</p>
+          <p>The naive comparison says chasing makes banks slower, 9.5 working days against 4.4. That is selection, not effect: every chased round had already run past the SLA. Comparing across acquirers does not fix it either, because the chase day is a fixed function of each bank's SLA, so the chased arm is simply the banks with short SLAs.</p>
+          <p>The deeper problem is that the chase rule is deterministic, so within any one bank every eligible round was chased and there is no control group at all. The effect is unmeasurable by construction. So 10% of eligible rounds are deliberately never chased, and the comparison runs inside each acquirer on that acquirer's own chase day.</p>
+          <p>At current volume that collects roughly nine held-out rounds against 125 chased, which is far short of a usable floor.</p>
+        </div>
+        <p class="pull">The honest answer is "ask again in a few months". A system that printed a number from that evidence would be publishing noise that a team would act on.<cite>Section 7.3 — what cannot be measured yet</cite></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="act wrap" id="prd-8">
+    <div class="act-head"><p class="rail">08 — Requirements</p>
+      <div><h2>Twenty requirements, each implemented and covered by tests.</h2>
+        <p class="dek">P0 means the product does not work without it.</p></div></div>
+    <div class="act-body"><p class="rail">By capability</p>
+      <div>
+        <div class="dt-scroll">
+          <table class="dt">
+            <thead><tr><th>#</th><th>Requirement</th><th>Priority</th></tr></thead>
+            <tbody>
+              <tr><td>R1</td><td>Status is derived from an immutable event log, never stored</td><td>P0</td></tr>
+              <tr><td>R2</td><td>Working-day calendar with per-acquirer holidays and a 2pm acquirer cut-off</td><td>P0</td></tr>
+              <tr><td>R3</td><td>Per-party episodes with overlap preserved, ops split into solo and overlap</td><td>P0</td></tr>
+              <tr><td>R4</td><td>Acquirer SLA judged on the worst single response round</td><td>P0</td></tr>
+              <tr><td>R5</td><td>Per-acquirer field requirements as configuration</td><td>P0</td></tr>
+              <tr><td>R6</td><td>Three-level validation: presence, format, cross-field consistency</td><td>P0</td></tr>
+              <tr><td>R7</td><td>One consolidated bounce per party, naming the acquirers each gap blocks</td><td>P0</td></tr>
+              <tr><td>R8</td><td>Partial raising: ready acquirers go today, blocked ones wait</td><td>P0</td></tr>
+              <tr><td>R9</td><td>Per-acquirer submission templates as configuration, with column ownership</td><td>P0</td></tr>
+              <tr><td>R10</td><td>Pre-flight: dropdown domains, duplicate rows, number mangling, row caps, tab consistency</td><td>P0</td></tr>
+              <tr><td>R11</td><td>Draft covering email per batch; no send path exists</td><td>P0</td></tr>
+              <tr><td>R12</td><td>Reply parsing by email shape, with negation handling and confidence scoring</td><td>P0</td></tr>
+              <tr><td>R13</td><td>Ambiguous matches queue for review rather than resolve</td><td>P0</td></tr>
+              <tr><td>R14</td><td>MCC catalogue with risk levels, instrument restrictions and licence requirements</td><td>P1</td></tr>
+              <tr><td>R15</td><td>Editable restriction registry with three enforcement levels and source-based confidence</td><td>P1</td></tr>
+              <tr><td>R16</td><td>Overrides recorded against the entry, with outcome tracking</td><td>P1</td></tr>
+              <tr><td>R17</td><td>Chase list by whose court, on the current round, ranked by tier-weighted lateness</td><td>P1</td></tr>
+              <tr><td>R18</td><td>Escalation ladder with a cooldown, ending in a human handover</td><td>P1</td></tr>
+              <tr><td>R19</td><td>Holdout and within-acquirer comparison for chase effectiveness</td><td>P2</td></tr>
+              <tr><td>R20</td><td>Dashboard: blended TAT, acquirer scorecard, exception list, drill-down timeline</td><td>P0</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="act wrap" id="prd-9">
+    <div class="act-head"><p class="rail">09 — What was cut</p>
+      <div><h2>Four things that were scoped and then deliberately left out.</h2></div></div>
+    <div class="act-body"><p class="rail">And why</p>
+      <div>
+        <div class="prose">
+          <p><b>Post-live website monitoring.</b> Originally scoped alongside the chaser. It requires fetching live merchant sites, which this project has no honest way to test: a scanner proven against invented web pages proves nothing. It is also a different product from procurement, closer to a compliance scanner. Building it here would have padded the project instead of finishing it.</p>
+          <p><b>Automatic promotion of acquirer agreement into house policy.</b> The system computes which categories every acquirer refuses and shows them as candidates, but will not block on them. The intersection of the lists gets wider the fewer lists we hold, so inferring a rule from it would make the rules strongest exactly where the data is thinnest. Promotion is a deliberate, recorded human action.</p>
+          <p><b>A merchant clock.</b> Time waiting on a merchant is still charged to BD. Adding a fifth party is modelled but not built, because it changes every historical figure and needs the operating team to agree first.</p>
+          <p><b>Sending.</b> Permanently, not for now.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="act wrap" id="prd-10">
+    <div class="act-head"><p class="rail">10 — Open questions</p>
+      <div><h2>Five things this document does not settle.</h2></div></div>
+    <div class="act-body"><p class="rail">Unresolved</p>
+      <div>
+        <div class="prose">
+          <p><b>Should the merchant be a party?</b> BD is currently charged for merchant silence. Adding a merchant clock would be fairer to BD and would make every historical comparison discontinuous.</p>
+          <p><b>Were all 117 fields on the largest bank template mandatory</b>, or does a typical merchant fill a fraction? This decides how much of that file can truthfully be called automated.</p>
+          <p><b>What is the right holdout share?</b> 10% answers the chase question in months. 20% answers it in half the time and makes twice as many merchants wait.</p>
+          <p><b>Should contested rejections be a separate state?</b> When ops argues a rejection and the bank reclassifies it as "additional documents required", both the true rejection rate and the document count should stay honest.</p>
+          <p><b>How should the registry handle a bank that loosens a category permanently?</b> Currently a person retires the entry. There is a case for the evidence doing it automatically after enough approvals, and a stronger case against.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="act wrap" id="prd-11">
+    <div class="act-head"><p class="rail">11 — Status, and what is not claimed</p>
+      <div><h2>What exists, what it runs on, and what would be dishonest to say about it.</h2></div></div>
+    <div class="act-body"><p class="rail">Honesty</p>
+      <div>
+        <div class="prose">
+          <p><b>What exists:</b> a working system of 37 source files and 283 tests, with a live dashboard, covering intake, file generation, reply parsing, the restriction registry and the chaser.</p>
+          <p><b>What it runs on:</b> a seeded synthetic dataset of 360 merchants, 1,376 requests, 4,311 events and 626 bank emails. Acquirers, merchants, templates, category lists and rate cards are all invented. Nothing from any real workplace appears in it, by design.</p>
+          <p><b>What is therefore not claimed.</b> No real MID has been procured through this. The accuracy figures measure the system against messiness this project invented, and real inboxes hold cases not modelled here. The turnaround figures describe the synthetic pipeline, not any real team's performance. The chase effectiveness question is unanswered, and section 07 explains why rather than estimating around it.</p>
+          <p><b>What production would need:</b> a real mailbox integration, the real per-bank templates and category lists loaded into the registry, a few weeks of someone checking the system's judgement of "late" and "blocked" against their own, and agreement from the operating team on the open questions above.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="act wrap" id="prd-12">
+    <div class="act-head"><p class="rail">12 — Reading the code</p>
+      <div><h2>Where each rule in this document lives.</h2></div></div>
+    <div class="act-body"><p class="rail">Code map</p>
+      <div>
+        <div class="dt-scroll">
+          <table class="dt">
+            <thead><tr><th>Where</th><th>What</th></tr></thead>
+            <tbody>
+              <tr><td><code>src/model.py</code></td><td>Entities, events, bounce routing. Status derived, never stored</td></tr>
+              <tr><td><code>src/tat.py</code></td><td>The engine. Replays events into per-party episodes</td></tr>
+              <tr><td><code>src/calendar_rules.py</code></td><td>Working days, holidays, the 2pm cut-off</td></tr>
+              <tr><td><code>src/intake/</code></td><td>Validation and per-acquirer readiness</td></tr>
+              <tr><td><code>src/filegen/</code></td><td>Template spec, mapping, pre-flight, writer, covering email</td></tr>
+              <tr><td><code>src/parsing/</code></td><td>Shape-driven extraction, classification, matching</td></tr>
+              <tr><td><code>src/catalogue/</code></td><td>MCC catalogue, acquirer policies, registry, overrides</td></tr>
+              <tr><td><code>src/chaser/</code></td><td>Overdue detection, ladder, drafts, effect measurement</td></tr>
+              <tr><td><code>tests/</code></td><td>283 tests, each one a rule from section 05 written down</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p style="margin-top:var(--s6);display:flex;flex-wrap:wrap;gap:var(--s3)">
+          <a class="btn btn-p" href="https://github.com/navyajuneja1000-droid/MID-Procurement-Workflow" target="_blank" rel="noopener">The repository ↗</a>
+          <a class="btn btn-s" href="/">Back to the dashboard
+            <svg class="arw" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></p>
+      </div>
+    </div>
+  </section>
+</main>
+<footer class="site-foot">
+  <div class="wrap">
+    <p>Every acquirer, merchant, template and category list in this system is invented. The figures come from a seeded synthetic dataset, not live traffic.</p>
+    <p><a href="/">The dashboard</a> · <a href="https://github.com/navyajuneja1000-droid/MID-Procurement-Workflow" target="_blank" rel="noopener">The code</a></p>
+  </div>
+</footer>
+<script>
+/* follow the reader's own light or dark setting */
+(function(){ try{ var d=matchMedia('(prefers-color-scheme: light)').matches;
+  document.documentElement.setAttribute('data-theme', d?'light':'dark'); }catch(e){} })();
+</script>
+</body></html>
