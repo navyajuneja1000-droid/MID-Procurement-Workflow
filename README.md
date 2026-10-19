@@ -6,6 +6,8 @@ replies, and turnaround time reported per party.
 
 **Live dashboard: https://workflowmidprocurement.vercel.app/**
 
+**[Read the PRD](PRD.md)** for the problem, the rules that are easy to get wrong, what was deliberately not built, and what is not being claimed.
+
 Every acquirer, merchant, policy and template here is invented. The figures
 come from a seeded synthetic dataset, not live traffic. No real institution,
 merchant, rate card or template appears anywhere in this repository.
