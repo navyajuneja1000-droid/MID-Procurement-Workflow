@@ -632,7 +632,7 @@ class DataGenerator:
 
         Rates are per bank in reality and are left out here on purpose: this
         project does not model a rate card, and inventing one would put numbers
-        on a portfolio artefact that look like a real pricing sheet. What is
+        in a demonstration build that look like a real pricing sheet. What is
         modelled is ownership. These values arrive from another team, a share
         of them never arrive at all, and ops cannot supply them, only chase.
         """
